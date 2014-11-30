@@ -7,6 +7,7 @@ using System.IO;
 using DirectShowLib;
 using DirectShowLib.DES;
 using System.Runtime.InteropServices;
+using System.Globalization;
 
 namespace ConsoleApplication1
 {
@@ -50,7 +51,7 @@ namespace ConsoleApplication1
                 if (File.Exists(new_file) == false)
                 {
                     string[] temp = getDurationAndAudioFilter(file);
-
+                    Console.WriteLine(temp[1]);
                     proc.StartInfo.Arguments = "-i " + file.ToString() + "  -bsf:v h264_mp4toannexb -f mpegts " + temp[1] + "-vf scale=640:480 -y -b:v 2M " + new_file;
                     proc.StartInfo.RedirectStandardError = true;
                     proc.StartInfo.UseShellExecute = false;
@@ -227,31 +228,16 @@ namespace ConsoleApplication1
 
                     string num = line.Substring(a + 12, b - a - 13);
                     double max_volume = Double.Parse(num, System.Globalization.NumberStyles.Any);
-                    if (max_volume >= -0) //too loud
+                    if (max_volume >= 0) //too loud
                     {
-                        AddLog("Audio is VERY, VERY loud, decreasing by 16dB");
-                        double mean = max_volume + 16;
-                        audio_filter = "-af volume=-" + mean.ToString() + "dB:precision=fixed ";
+                        AddLog("Audio is too loud, decreasing by " + Math.Abs(max_volume).ToString() + "dB");
+                        double mean = -max_volume;
+                        audio_filter = "-af volume=-" + Math.Abs(mean).ToString() + "dB:precision=fixed ";
                     }
-                    else if (max_volume > -2) //too loud
+                    else
                     {
-                        AddLog("Audio is VERY loud, decreasing by 16dB");
-                        double mean = max_volume + 12;
-                        audio_filter = "-af volume=-" + mean.ToString() + "dB:precision=fixed ";
-                    }
-                    else if (max_volume > -6) //too loud
-                    {
-                        AddLog("Audio is loud, decreasing by 10dB");
-                        double mean = max_volume + 10;
-                        audio_filter = "-af volume=-" + mean.ToString() + "dB:precision=fixed ";
-                    }
-                    else if (max_volume < -8) //too quiet
-                    {
-                        AddLog("Audio is too low, increasing by 4dB");
-                        double mean = -4 - max_volume;
-                        Console.WriteLine("-" + mean);
-                        Console.ReadKey();
-
+                        AddLog("Audio is too low, increasing by " + Math.Abs(max_volume).ToString() + "dB");
+                        double mean = max_volume;
                         audio_filter = "-af volume=" + Math.Abs(mean).ToString() + "dB:precision=fixed ";
                     }
 
@@ -264,13 +250,14 @@ namespace ConsoleApplication1
             return new string[] { dur, audio_filter };
         }
 
-        static void joinConcat(string concat)
+        static void joinConcat(string concat, string output_name=null)
         {
             emptyTemp();
             Process proc = new Process();
             proc.StartInfo.FileName = ffmpeg_location;
             Random rnd = new Random();
             string file =  "random_commercials_" + rnd.Next(1, 9999).ToString() + ".mpg";
+            if(output_name!=null) file = output_name;
             string fname_noext = Path.GetFileNameWithoutExtension(file);
             string fname_root = Path.GetDirectoryName(file);
             string output_folder = Path.GetDirectoryName(ffmpeg_location) + "\\output\\";
@@ -329,7 +316,8 @@ namespace ConsoleApplication1
             string[] temp = getDurationAndAudioFilter(file);
 
             interval = TimeSpan.Parse(temp[0]); //duration
-            audio_filter = temp[1]; //audio filter;
+            AddLog("Audio Filter: " + temp[1]);
+            audio_filter = audio_filter = temp[1]; //audio filter;
             double times = 0;
             //split file
 
@@ -392,7 +380,7 @@ namespace ConsoleApplication1
             {
                 if (File.Exists(Path.GetDirectoryName(ffmpeg_location) + "\\temp\\temp" + i.ToString() + ".mpg"))
                 {
-                    concat += Path.GetDirectoryName(ffmpeg_location) + "\\temp\\temp" + i.ToString() + ".mpg|" + (Path.GetDirectoryName(ffmpeg_location));
+                    concat += Path.GetDirectoryName(ffmpeg_location) + "\\temp\\temp" + i.ToString() + ".mpg|" + (new Foo().getSomeCommercials(Path.GetDirectoryName(ffmpeg_location), 4));
                 }
                 else
                 {
@@ -404,6 +392,7 @@ namespace ConsoleApplication1
             concat = concat.Substring(0, concat.Length - 1);
             AddLog("CONCAT string generated: " + concat);
             Console.WriteLine("-i \"concat:" + concat + "\" -c copy -f mpegts -analyzeduration 2147483647 -probesize 2147483647 -y -b:v 2M " + output_folder + fname_noext + ".mpg");
+            
             //Console.ReadKey();
             proc.StartInfo.Arguments = "-i \"concat:" + concat + "\" -c copy -f mpegts -analyzeduration 2147483647 -probesize 2147483647 -y -b:v 2M " + output_folder + fname_noext + ".mpg";
             proc.StartInfo.RedirectStandardError = true;
@@ -420,6 +409,9 @@ namespace ConsoleApplication1
                 Console.WriteLine(line);
             }
             proc.Close();
+            
+            //joinConcat(concat);
+
             AddLog("Merge complete.");
             AddLog("Finished converting " + file.ToString());
             Console.WriteLine("Finished!");
@@ -639,6 +631,8 @@ namespace ConsoleApplication1
             File.AppendAllText(Log_File, DateTime.Now.ToString() + "    " +  log + "\r\n");
         }
 
+        static List<TimeSpan> breakz = new List<TimeSpan>();
+
         static void Main(string[] args)
         {
 
@@ -712,17 +706,37 @@ namespace ConsoleApplication1
             Console.WriteLine("Joins have been checked! Press any Key to continue....");
             AddLog("Joins have been checked.");
             Console.ReadKey();
-
+            
             if (shows.Count > 0)
             {
+                
                 AddLog("Begin convert of " + shows[0].ToString());
                 AddLog("Scanning show for commercial breaks.");
-                List<TimeSpan> breaks = scanForCommercialBreaks(shows[0].ToString(), .5);
-                AddLog("Commercial breaks scan complete. Found " + breaks.Count.ToString() + " commercial breaks.");
-                Console.WriteLine(breaks.Count.ToString());
+                breakz.Add(TimeSpan.Parse("0"));
+                if (File.Exists(folder + "\\shows\\" + Path.GetFileNameWithoutExtension(shows[0].ToString()) + ".txt"))
+                {
+                    Console.WriteLine("Ohhhh! Manually adding commercial breaks? Excellent...");
+                    string[] lines = File.ReadAllLines(folder + "\\shows\\" + Path.GetFileNameWithoutExtension(shows[0].ToString()) + ".txt");
+                    
+                    for (int i = 0; i < lines.Count(); i++)
+                    {
+                        Console.WriteLine("Found commercial break at: " + lines[i]);
+                        breakz.Add(TimeSpan.Parse(lines[i]));
+                    }
+
+
+                    Console.WriteLine("Found all the breaks, press any key...");
+                    Console.ReadKey();
+                }
+                else
+                {
+                    breakz = scanForCommercialBreaks(shows[0].ToString(), .5);
+                }
+                AddLog("Commercial breaks scan complete. Found " + breakz.Count.ToString() + " commercial breaks.");
+                Console.WriteLine(breakz.Count.ToString());
                 //Console.ReadKey();
                 AddLog("Actual show conversion is beginning...");
-                convertShow(shows[0].ToString(), breaks);
+                convertShow(shows[0].ToString(), breakz);
                 AddLog("Show has been converted.");
             }
             else
