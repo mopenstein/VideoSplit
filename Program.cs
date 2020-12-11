@@ -2,13 +2,8 @@
 using System.Windows.Forms;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Diagnostics;
 using System.IO;
-using DirectShowLib;
-using DirectShowLib.DES;
-using System.Runtime.InteropServices;
-using System.Globalization;
 
 namespace ConsoleApplication1
 {
@@ -55,9 +50,9 @@ namespace ConsoleApplication1
             return str;
         }
 
-        static string ffmpeg_location = "C:\\ffmpeg\\ffmpeg.exe";
-        static string ffmpegX_location = "C:\\ffmpegX\\bin\\ffmpeg.exe";
-        static string temp_folder = Path.GetDirectoryName(ffmpeg_location) + "\\temp_folder";
+        static string ffmpeg_location = "";
+        static string ffmpegX_location = "";
+        static string temp_folder = "";
 
         static TimeSpan[] NormalizeAudio(string file)
         {
@@ -1121,17 +1116,20 @@ namespace ConsoleApplication1
             //return commerical_breaks;
         }
 
-        private static string Log_File = Path.GetDirectoryName(ffmpeg_location) + "\\output\\log.txt";
+        //Path.GetDirectoryName(ffmpeg_location) + "\\output\\log.txt"
+        private static string Log_File = "";
 
         static void ResetLog()
         {
-            if (File.Exists(Log_File) == false) File.Create(Log_File).Close();
-            File.WriteAllText(Log_File, string.Empty);
+            if (Log_File == "") return;
+            if (File.Exists(Log_File) == false) File.Create(Log_File + "\\log.txt").Close();
+            File.WriteAllText(Log_File + "\\log.txt", string.Empty);
         }
 
         static void AddLog(string log)
         {
-            File.AppendAllText(Log_File, DateTime.Now.ToString() + "    " +  log + "\r\n");
+            if (Log_File == "") return;
+            File.AppendAllText(Log_File + "\\log.txt", DateTime.Now.ToString() + "    " +  log + "\r\n");
         }
 
         static List<TimeSpan> breakz = new List<TimeSpan>();
@@ -1169,6 +1167,23 @@ namespace ConsoleApplication1
                     Console.WriteLine(@" \    |  |  |     ||  |  |  |       \   / |  ||     |     |     |");
                     Console.WriteLine(@"  \___|__|  |_____|____| |__|        \_/ |____|_____|_____|\___/ ");
                     break;
+                case 4:
+                    Console.WriteLine(@" ,----.                  ,-----.                       ,--.            ");
+                    Console.WriteLine(@"'  .-./    ,---. ,--,--, |  |) /_,--.--. ,---.  ,--,--.|  |,-.  ,---.  ");
+                    Console.WriteLine(@"|  | .---.| .-. :|      \|  .-.  \  .--'| .-. :' ,-.  ||     / (  .-'  ");
+                    Console.WriteLine(@"'  '--'  |\   --.|  ||  ||  '--' /  |   \   --.\ '-'  ||  \  \ .-'  `) ");
+                    Console.WriteLine(@" `------'  `----'`--''--'`------'`--'    `----' `--`--'`--'`--'`----'  ");
+                    break;
+                case 9:
+                    Console.WriteLine(@"    )    (               (         )       )   (     ");
+                    Console.WriteLine(@" ( /(    )\ )    *   )   )\ )   ( /(    ( /(   )\ )  ");
+                    Console.WriteLine(@" )\())  (()/(  ` )  /(  (()/(   )\())   )\()) (()/(  ");
+                    Console.WriteLine(@"((_)\    /(_))  ( )(_))  /(_)) ((_)\   ((_)\   /(_)) ");
+                    Console.WriteLine(@"  ((_)  (_))   (_(_())  (_))     ((_)   _((_) (_))   ");
+                    Console.WriteLine(@" / _ \  | _ \  |_   _|  |_ _|   / _ \  | \| | / __|  ");
+                    Console.WriteLine(@"| (_) | |  _/    | |     | |   | (_) | | .` | \__ \  ");
+                    Console.WriteLine(@" \___/  |_|      |_|    |___|   \___/  |_|\_| |___/  ");
+                    break;
                 default:
                     Console.WriteLine(@"____   ____.__    .___            _________      .__  .__  __   ");
                     Console.WriteLine(@"\   \ /   /|__| __| _/____  ____ /   _____/_____ |  | |__|/  |_ ");
@@ -1185,6 +1200,9 @@ namespace ConsoleApplication1
                     Console.WriteLine("█   [ 1 ] - Batch Normalize Audio                        █");
                     Console.WriteLine("█   [ 2 ] - Print Breaks                                 █");
                     Console.WriteLine("█   [ 3 ] - Split Video                                  █");
+                    Console.WriteLine("█   [ 4 ] - Generate Breaks                              █");
+                    Console.WriteLine("█                                                        █");
+                    Console.WriteLine("█   [ 9 ] - Options                                      █");
                     Console.WriteLine("█                                                        █");
                     Console.WriteLine("██████████████████████████████████████████████████████████");
                     break;
@@ -1220,23 +1238,41 @@ namespace ConsoleApplication1
         {
 
             string app_path = AppDomain.CurrentDomain.BaseDirectory.ToString();
-            if(File.Exists(app_path + "\\options.txt"))
+            if(File.Exists(app_path + "\\settings.txt"))
             {
-                string[] lines = File.ReadAllLines(app_path + "\\options.txt");
+                string[] lines = File.ReadAllLines(app_path + "\\settings.txt");
                 for (int i = 0; i < lines.Count(); i++)
                 {
                     string[] opt = lines[i].Split(new string[] { "=" }, StringSplitOptions.RemoveEmptyEntries);
-                    if (opt[0].ToLower() == "ffmpeg location")
+                    switch(opt[0].ToLower().Trim())
                     {
-                        Console.WriteLine("Setting FFMPEG location to " + opt[1]);
-                        ffmpeg_location = opt[1];
+                        case "ffmpeg location":
+                            Console.WriteLine("Setting FFMPEG location to " + opt[1]);
+                            ffmpeg_location = opt[1];
+                            break;
+                        case "alt ffmpeg location":
+                            Console.WriteLine("Setting Alt FFMPEG location to " + opt[1]);
+                            ffmpegX_location = opt[1];
+                            break;
+                        case "temp folder":
+                            Console.WriteLine("Setting Temp Folder to " + opt[1]);
+                            temp_folder = opt[1];
+                            break;
+                        case "log file":
+                            Console.WriteLine("Setting Log File location to " + opt[1]);
+                            Log_File = opt[1];
+                            break;
+                        default:
+
+                            break;
                     }
                 }
             }
             ResetLog();
 
+            System.Threading.Thread.Sleep(2000);
 
-
+            /*
             string folder = Path.GetDirectoryName(ffmpeg_location);
 
             if (Directory.Exists(folder + "\\shows\\") == false) Directory.CreateDirectory(folder + "\\shows\\");
@@ -1250,7 +1286,7 @@ namespace ConsoleApplication1
             List<string> bumpers_open = GetFiles(folder + "\\bopen\\");
             if (Directory.Exists(folder + "\\bclose\\") == false) Directory.CreateDirectory(folder + "\\bclose\\");
             List<string> bumpers_close = GetFiles(folder + "\\bclose\\");
-
+            */
 
             while (1 == 1)
             {
@@ -1260,7 +1296,7 @@ namespace ConsoleApplication1
                 char selected_option = ck.KeyChar;
 
                 if (ck.Key == ConsoleKey.Escape) Environment.Exit(0);
-
+                if (ffmpeg_location == "") selected_option = '9';
                 switch (selected_option)
                 {
                     case '1':
@@ -1320,15 +1356,7 @@ namespace ConsoleApplication1
                                     while (normal_audio.Count > 0)
                                     {
 
-                                        drawScreen(1);//normalize
-
-
-                                        //var str = string.Format("{0:00}:{1:00}:{2:00}", tl.Hours, tl.Minutes, t.Seconds);
-
-                                        //int hh = (int)Math.Floor(tl.TotalHours);
-                                        //int mm = (int)(Math.Floor(tl.TotalMinutes) - (hh * 60));
-                                        //int ss = (int)(Math.Floor(tl.TotalSeconds) - Math.Floor(tl.TotalMinutes * 60));
-
+                                        drawScreen(1);
 
                                         tempTotal = filter.Add(apply);
 
@@ -1496,7 +1524,73 @@ namespace ConsoleApplication1
                         AddLog("Splits have been checked.");
                         //Console.ReadKey();
                         break;
+                    case '4':
+                        //print generic breaks
+                        drawScreen(4);
+                        //getDurationAndAudioFilter
+                        Console.ReadKey();
+                        break;
+
+                    case '9':
+                        //options
+                        drawScreen(9); //options
+
+                        Console.WriteLine("");
+                        Console.WriteLine("");
+                        Console.WriteLine("Enter FFMPEG Location: ");
+                        if (ffmpeg_location != "") SendKeys.SendWait(ffmpeg_location);
+                        string flocation = Console.ReadLine();
+
+                        if (File.Exists(flocation) == false)
+                        {
+                            drawMessage("Could not verify file existance!");
+                            break;
+                        }
+
+                        Console.WriteLine("");
+                        Console.WriteLine("");
+                        Console.WriteLine("Enter Alt FFMPEG Location: ");
+                        if (ffmpeg_location != "") SendKeys.SendWait(ffmpegX_location);
+                        string xlocation = Console.ReadLine();
+
+                        if (File.Exists(xlocation) == false)
+                        {
+                            drawMessage("Could not verify file existance!");
+                            break;
+                        }
+
+                        Console.WriteLine("");
+                        Console.WriteLine("");
+                        Console.WriteLine("Enter TEMP Path: (if it doesn't exist, it'll be created)");
+                        if (temp_folder != "") SendKeys.SendWait(temp_folder);
+                        string tlocation = Console.ReadLine();
+
+                        if (Directory.Exists(tlocation) == false)
+                        {
+                            Directory.CreateDirectory(tlocation);
+                        }
+
+                        Console.WriteLine("");
+                        Console.WriteLine("");
+                        Console.WriteLine("Enter Log File Location: (if it doesn't exist, it'll be created)");
+                        if (temp_folder != "") SendKeys.SendWait(temp_folder);
+                        string llocation = Console.ReadLine();
+
+                        if (Directory.Exists(llocation) == false)
+                        {
+                            Directory.CreateDirectory(llocation);
+                        }
+
+                        ffmpeg_location = flocation;
+                        ffmpegX_location = xlocation;
+                        temp_folder = tlocation;
+                        Log_File = llocation;
+
+                        File.WriteAllText("settings.txt", "ffmpeg location=" + ffmpeg_location + Environment.NewLine + "alt ffmpeg location=" + ffmpegX_location + Environment.NewLine + "temp folder=" + temp_folder + Environment.NewLine + "log file=" + temp_folder + Environment.NewLine);
+
+                        break;
                     default:
+                        Console.CursorVisible = false;
                         drawMessage("Invalid Entry!");
                         break;
                 }
@@ -1504,6 +1598,7 @@ namespace ConsoleApplication1
 
             
 
+            /*
 
             if (File.Exists(folder + "\\rnd.txt")) //create 15 random commercial videos
             {
@@ -1607,6 +1702,8 @@ namespace ConsoleApplication1
             AddLog("END LOG");
             Environment.Exit(0);
             return;
+           
+            */
         }
     }
 /*split shows based on file time
