@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
 using System.IO;
+using System.Drawing;
 
 namespace ConsoleApplication1
 {
@@ -385,7 +386,7 @@ namespace ConsoleApplication1
             }
         }
 
-        static void checkSplits(string in_path, string out_path)
+        static void checkSplits(string in_path, string out_path, double threshhold)
         {
             Process proc = new Process();
             proc.StartInfo.FileName = ffmpeg_location;
@@ -416,7 +417,7 @@ namespace ConsoleApplication1
                     if (auto_split == true)
                     {
 
-                        List<TimeSpan> breaks = scanForCommercialBreaks(file, 0.3, 0, 0);
+                        List<TimeSpan> breaks = scanForCommercialBreaks(file, threshhold, 0, 0);
 
                         foreach(TimeSpan tss in breaks)
                         {
@@ -531,12 +532,13 @@ namespace ConsoleApplication1
             while ((line = reader.ReadLine()) != null)
             {
                 int a = line.IndexOf("Duration");
-                if (a >= 0)
+                int xx = line.IndexOf("Durations");
+                if (a >= 0 && xx==-1)
                 {
                     int b = line.IndexOf(".", a + 1);
                     dur = line.Substring(a + 10, b - a - 10);
                     AddLog("Found length "+ dur.ToString());
-                    Console.WriteLine();
+                    //Console.WriteLine("Found length " + dur.ToString());
                     //return new string[] { dur, "5" };
                 }
 
@@ -570,9 +572,10 @@ namespace ConsoleApplication1
                         audio_filter = "-af \"volume=" + Math.Abs(mean).ToString() + "dB\" ";
                     }
 
-                    Console.WriteLine(audio_filter);
+//                    Console.WriteLine(audio_filter);
+                    //Console.ReadKey();
                 }
-                Console.WriteLine(line);
+                //Console.WriteLine(line);
             }
             //Console.ReadKey();
             proc.Close();
@@ -629,6 +632,72 @@ namespace ConsoleApplication1
             Console.WriteLine("Finished!");
         }
 
+        static string getScreenShot(string file, string pos)
+        {
+            /*
+            if (File.Exists(temp_folder + "\\screen_" + TimeSpan.Parse(pos).TotalSeconds.ToString() + ".jpg"))
+            {
+                return temp_folder + "\\screen_" + TimeSpan.Parse(pos).TotalSeconds.ToString() + ".jpg";
+            }
+            */
+
+            if (!File.Exists(file))
+            {
+                return null;
+            }
+
+            Process proc = new Process();
+            proc.StartInfo.FileName = ffmpeg_location;
+
+            string fname_noext = Path.GetFileNameWithoutExtension(file);
+            string fname_root = Path.GetDirectoryName(file);
+
+            string filename = file;
+
+            //get duration
+            //proc.StartInfo.Arguments = "-ss " + pos + " -i " + "\"" + filename + "\" -vframes 1 -q:v 2 \"" + temp_folder + "\\screen_" + TimeSpan.Parse(pos).TotalSeconds.ToString() + ".jpg\"";
+
+            /*
+            if (File.Exists(temp_folder + "\\screen_" + pos + ".jpg"))
+            {
+                File.SetAttributes(temp_folder + "\\screen_" + pos + ".jpg", FileAttributes.Normal);
+                File.Delete(temp_folder + "\\screen_" + pos + ".jpg");
+            }
+            */
+
+            Random rnd = new Random();
+            string temp_file = temp_folder + "\\screen_" + pos + "_" + rnd.Next(1, 999).ToString() + "_" + rnd.Next(1, 999).ToString() + ".jpg";
+            proc.StartInfo.Arguments = "-y -ss " + pos + " -i " + "\"" + filename + "\" -vframes 1 -q:v 2 \"" + temp_file;
+            AddLog(proc.StartInfo.Arguments);
+            proc.StartInfo.RedirectStandardError = true;
+            proc.StartInfo.RedirectStandardOutput = true;
+            proc.StartInfo.UseShellExecute = false;
+            proc.StartInfo.CreateNoWindow = true;
+
+            if (!proc.Start())
+            {
+                AddLog("Error starting");
+            }
+            StreamReader reader = proc.StandardError;
+            string line;
+            while ((line = reader.ReadLine()) != null)
+            {
+            }
+            //Console.ReadKey();
+            proc.Close();
+
+            try
+            {
+                proc.Kill();
+            }
+            catch { }
+
+            //return temp_folder + "\\screen_" + TimeSpan.Parse(pos).TotalSeconds.ToString() + ".jpg";
+            return temp_file;
+
+
+        }
+
         static string getVideoOption(string file, string option)
         {
             string fname_noext = Path.GetFileNameWithoutExtension(file);
@@ -648,6 +717,11 @@ namespace ConsoleApplication1
                 }
             }
             return null;
+        }
+
+        static bool IsNumeric(string value)
+        {
+            return value.All(char.IsNumber);
         }
 
         static void convertShow(string file, List<TimeSpan> breaks)
@@ -1174,6 +1248,14 @@ namespace ConsoleApplication1
                     Console.WriteLine(@"'  '--'  |\   --.|  ||  ||  '--' /  |   \   --.\ '-'  ||  \  \ .-'  `) ");
                     Console.WriteLine(@" `------'  `----'`--''--'`------'`--'    `----' `--`--'`--'`--'`----'  ");
                     break;
+                case 5:
+                    Console.WriteLine(@"     _         _                             ");
+                    Console.WriteLine(@"    / \  _   _| |_ ___   ___ _ __ ___  _ __  ");
+                    Console.WriteLine(@"   / _ \| | | | __/ _ \ / __| '__/ _ \| '_ \ ");
+                    Console.WriteLine(@"  / ___ \ |_| | || (_) | (__| | | (_) | |_) |");
+                    Console.WriteLine(@" /_/   \_\__,_|\__\___/ \___|_|  \___/| .__/ ");
+                    Console.WriteLine(@"                                      |_|    ");
+                    break;
                 case 9:
                     Console.WriteLine(@"    )    (               (         )       )   (     ");
                     Console.WriteLine(@" ( /(    )\ )    *   )   )\ )   ( /(    ( /(   )\ )  ");
@@ -1201,6 +1283,7 @@ namespace ConsoleApplication1
                     Console.WriteLine("█   [ 2 ] - Print Breaks                                 █");
                     Console.WriteLine("█   [ 3 ] - Split Video                                  █");
                     Console.WriteLine("█   [ 4 ] - Generate Breaks                              █");
+                    Console.WriteLine("█   [ 5 ] - Autocrop                                     █");
                     Console.WriteLine("█                                                        █");
                     Console.WriteLine("█   [ 9 ] - Options                                      █");
                     Console.WriteLine("█                                                        █");
@@ -1420,15 +1503,15 @@ namespace ConsoleApplication1
                             Console.WriteLine("");
                             Console.WriteLine("");
                             Console.WriteLine("Enter threshold: (length of time to be considered, default 0.5 seconds)");
-                            string thresh = Console.ReadLine();
-                            double ithresh = 0.5;
+                            string athresh = Console.ReadLine();
+                            double iathresh = 0.5;
                             try
                             {
-                                if (thresh != "") ithresh = Double.Parse(thresh);
+                                if (athresh != "") iathresh = Double.Parse(athresh);
                             }
                             catch { }
 
-                            Console.WriteLine("Threshold set to " + ithresh.ToString() + " sec(s)");
+                            Console.WriteLine("Threshold set to " + iathresh.ToString() + " sec(s)");
 
                             Console.WriteLine("");
                             Console.WriteLine("");
@@ -1442,6 +1525,14 @@ namespace ConsoleApplication1
                             catch { }
 
                             Console.WriteLine("Minimum start time is " + iwait.ToString() + " sec(s)");
+
+
+                            Console.WriteLine("");
+                            Console.WriteLine("");
+                            Console.WriteLine("Shall we make up some breaks if none are found? ([Y]es or [N]o)");
+
+                            bool print_anyway = (Console.ReadLine().Trim().Substring(0, 1).ToLower() == "y" ? true : false);
+
 
                             while (print_breaks.Count > 0)
                             {
@@ -1469,7 +1560,31 @@ namespace ConsoleApplication1
                                         File.WriteAllText(spb_output, spb.Substring(0, spb.Length - 1));
                                         AddLog("Prnted breaks: " + spb_output);
                                     }
-                                    else { AddLog("No breaks found"); }
+                                    else
+                                    {
+                                        AddLog("No breaks found");
+                                        if(print_anyway)
+                                        {
+                                            Console.WriteLine("");
+                                            Console.WriteLine("No breaks found, making some up!");
+                                            Console.WriteLine("Getting length of video to use as a reference");
+                                            string[] atime = getDurationAndAudioFilter(print_breaks[0]);
+                                            Debug.WriteLine(atime[0]);
+                                            if (atime[0] != "")
+                                            {
+                                                double ilength = (double)TimeSpan.Parse(atime[0]).TotalSeconds;
+                                                int ibreaks = (int)Math.Floor(ilength / 600);
+                                                string sbreaks = "";
+                                                for (int i = 1; i <= ibreaks; i++)
+                                                {
+                                                    if ((600 * i) < ilength) sbreaks += (600 * i).ToString() + "\n";
+                                                }
+                                                Console.WriteLine(sbreaks);
+                                                File.WriteAllText(spb_output, sbreaks.Substring(0, sbreaks.Length - 1));
+                                            }
+                                            
+                                        }
+                                    }
 
                                 }
                                 else
@@ -1497,6 +1612,9 @@ namespace ConsoleApplication1
                             break;
                         }
 
+                        Console.WriteLine("");
+                        Console.WriteLine("");
+
                         Console.WriteLine("Enter output path : (leave blank to create new folder \\output\\)");
                         string split_out_folder = Console.ReadLine();
 
@@ -1518,7 +1636,23 @@ namespace ConsoleApplication1
                             break;
                         }
 
-                        checkSplits(split_in_folder,split_out_folder);
+                        Console.WriteLine("");
+                        Console.WriteLine("");
+                        Console.WriteLine("Enter threshold: (length of time to be considered, default 0.5 seconds)");
+                        string thresh = Console.ReadLine();
+                        double ithresh = 0.5;
+                        try
+                        {
+                            if (thresh != "") ithresh = Double.Parse(thresh);
+                        }
+                        catch { }
+
+                        Console.WriteLine("Threshold set to " + ithresh.ToString() + " sec(s)");
+
+                        Console.WriteLine("");
+                        Console.WriteLine("");
+
+                        checkSplits(split_in_folder,split_out_folder, ithresh);
 
                         drawMessage("Splits have been checked!");
                         AddLog("Splits have been checked.");
@@ -1530,7 +1664,198 @@ namespace ConsoleApplication1
                         //getDurationAndAudioFilter
                         Console.ReadKey();
                         break;
+                    case '5':
+                        //auto scan vidow for black bars
 
+                        drawScreen(5); //bars
+                        
+                        Console.WriteLine("Enter path to video files:");
+                        string bbars_folder = Console.ReadLine();
+
+                        if (bbars_folder == "") break;
+                        if (!Directory.Exists(bbars_folder))
+                        {
+                            drawMessage("Path does not exist");
+                            break;
+                        }
+
+                        Console.WriteLine();
+                        Console.WriteLine();
+
+                        Console.WriteLine("Enter black level 1-255 (default is 10):");
+                        string str_result = Console.ReadLine();
+                        int black_level = 10;
+
+                        if (IsNumeric(str_result) && str_result!="") black_level = int.Parse(str_result);
+
+                        Console.WriteLine();
+                        Console.WriteLine();
+
+                        List<string> bbars_files = GetFiles(bbars_folder, video_file_extensions);
+
+                        while (bbars_files.Count > 0)
+                        {
+                            Console.WriteLine("Autocropping: " + bbars_files[0]);
+
+
+                            //Console.ReadKey();
+
+                            string spb_output = bbars_folder + "\\" + Path.GetFileNameWithoutExtension(bbars_files[0]) + "_cropped" + Path.GetExtension(bbars_files[0]);
+
+                            if (!File.Exists(spb_output))
+                            {
+                                Console.WriteLine("New file will be: " + spb_output);
+                                //Console.ReadKey();
+
+                                string[] res = getDurationAndAudioFilter(bbars_files[0]);
+                                int dur = (int)TimeSpan.Parse(res[0]).TotalSeconds;
+                                Random rnd = new Random();
+                                Bitmap b = (Bitmap)Image.FromFile(getScreenShot(bbars_files[0], rnd.Next(5, dur).ToString()));
+                                //Bitmap b = (Bitmap)Image.FromFile(getScreenShot(bbars_files[0], (dur/2).ToString()));
+
+                                int left = 0;
+                                int top = 0;
+                                int width = b.Width;
+                                int height = b.Height;
+
+
+                                int maxWidth = b.Width;
+                                int maxHeight = b.Height;
+
+                                Console.WriteLine("");
+                                Console.WriteLine("Screen size: " + b.Width.ToString() + "x" + b.Height.ToString());
+                                Console.ReadKey();
+
+                                int non_black = -1;
+
+                                for (int x = 0; x < b.Width; x++)
+                                {
+                                    Color c1 = b.GetPixel(x, 10);
+                                    Color c2 = b.GetPixel(x, b.Height - 10);
+                                    if (c1.R < black_level && c1.G < black_level && c1.B < black_level && c2.R < black_level && c2.G < black_level && c2.B < black_level)
+                                    {
+                                        //AddLog(c.ToString());
+                                    }
+                                    else
+                                    {
+                                        non_black++;
+                                    }
+
+                                    if (non_black > 4)
+                                    {
+                                        left = x - non_black;
+                                        break;
+                                    }
+                                }
+
+                                non_black = -1;
+                                for (int x = b.Width - 1; x > -1; x--)
+                                {
+                                    Color c1 = b.GetPixel(x, 10);
+                                    Color c2 = b.GetPixel(x, b.Height - 10);
+                                    if (c1.R < black_level && c1.G < black_level && c1.B < black_level && c2.R < black_level && c2.G < black_level && c2.B < black_level)
+                                    {
+                                        //AddLog(c.ToString());
+                                    }
+                                    else
+                                    {
+                                        non_black++;
+                                    }
+
+                                    if (non_black > 4)
+                                    {
+                                        width = (x + non_black) - left;
+                                        break;
+                                    }
+                                }
+
+                                non_black = -1;
+                                for (int x = 0; x < b.Height; x++)
+                                {
+                                    Color c1 = b.GetPixel(10, x);
+                                    Color c2 = b.GetPixel(b.Width - 10, x);
+                                    if (c1.R < black_level && c1.G < black_level && c1.B < black_level && c2.R < black_level && c2.G < black_level && c2.B < black_level)
+                                    {
+                                        //AddLog(c.ToString());
+                                    }
+                                    else
+                                    {
+                                        non_black++;
+                                    }
+
+                                    if (non_black > 4)
+                                    {
+                                        top = x - non_black;
+                                        break;
+                                    }
+                                }
+
+                                non_black = -1;
+                                for (int x = b.Height - 1; x > -1; x--)
+                                {
+                                    Color c1 = b.GetPixel(10, x);
+                                    Color c2 = b.GetPixel(b.Width - 10, x);
+                                    if (c1.R < black_level && c1.G < black_level && c1.B < black_level && c2.R < black_level && c2.G < black_level && c2.B < black_level)
+                                    {
+                                        //AddLog(c.ToString());
+                                    }
+                                    else
+                                    {
+                                        non_black++;
+                                    }
+
+                                    if (non_black > 4)
+                                    {
+                                        height = (x + non_black) - top;
+                                        break;
+                                    }
+                                }
+
+                                if (left + width > maxWidth) width = maxWidth - left;
+                                if (top + height > maxHeight) height = maxHeight - top;
+
+
+
+
+                                string command = "-i \"" + bbars_files[0] + "\" -filter:v \"crop = " + width + ":" + height + ":" + left + ":" + top + "\" -c:a copy -strict -2 \"" + spb_output + "\"";
+                                Console.WriteLine(command);
+                                Console.ReadKey();
+
+                                Process proc = new Process();
+                                proc.StartInfo.FileName = ffmpegX_location;
+
+                                proc.StartInfo.Arguments = command;
+                                proc.StartInfo.RedirectStandardError = true;
+                                proc.StartInfo.UseShellExecute = false;
+
+                                if (!proc.Start())
+                                {
+                                    Console.WriteLine("Error starting");
+                                }
+
+                                StreamReader reader = proc.StandardError;
+                                string line;
+                                Console.WriteLine("Removing black bars...");
+                                Console.CursorVisible = false;
+
+                                DateTime start = DateTime.Now;
+
+                                while ((line = reader.ReadLine()) != null)
+                                {
+                                    Console.WriteLine(line);
+                                }
+                                proc.Close();
+
+                            }
+                            else
+                            {
+                                AddLog("Cropped files already exist for this file.");
+                                Console.WriteLine("Cropped files already exist for this file.");
+                            }
+                            bbars_files.RemoveAt(0);
+                        }
+
+                        break;
                     case '9':
                         //options
                         drawScreen(9); //options
