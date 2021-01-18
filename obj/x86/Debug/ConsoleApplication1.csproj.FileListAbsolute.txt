@@ -1,6 +1,0 @@
-C:\Users\jeromy\AppData\Local\Temporary Projects\ConsoleApplication1\bin\Debug\ConsoleApplication1.exe
-C:\Users\jeromy\AppData\Local\Temporary Projects\ConsoleApplication1\bin\Debug\ConsoleApplication1.pdb
-C:\Users\jeromy\AppData\Local\Temporary Projects\ConsoleApplication1\obj\x86\Debug\ConsoleApplication1.exe
-C:\Users\jeromy\AppData\Local\Temporary Projects\ConsoleApplication1\obj\x86\Debug\ConsoleApplication1.pdb
-C:\Users\jeromy\AppData\Local\Temporary Projects\ConsoleApplication1\obj\x86\Debug\ConsoleApplication1.csprojResolveAssemblyReference.cache
-C:\Users\jeromy\AppData\Local\Temporary Projects\ConsoleApplication1\bin\Debug\DirectShowLib-2005.dll

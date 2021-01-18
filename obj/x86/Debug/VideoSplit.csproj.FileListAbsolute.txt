@@ -1,5 +1,0 @@
-C:\Users\jeromy\Projects\VideoSplit\bin\Debug\VideoSplit.exe
-C:\Users\jeromy\Projects\VideoSplit\bin\Debug\VideoSplit.pdb
-C:\Users\jeromy\Projects\VideoSplit\obj\x86\Debug\VideoSplit.csprojResolveAssemblyReference.cache
-C:\Users\jeromy\Projects\VideoSplit\obj\x86\Debug\VideoSplit.exe
-C:\Users\jeromy\Projects\VideoSplit\obj\x86\Debug\VideoSplit.pdb

@@ -1,6 +1,0 @@
-C:\Users\jeromy\Projects\VideoSplit\bin\Release\VideoSplit.exe
-C:\Users\jeromy\Projects\VideoSplit\bin\Release\VideoSplit.pdb
-C:\Users\jeromy\Projects\VideoSplit\bin\Release\DirectShowLib-2005.dll
-C:\Users\jeromy\Projects\VideoSplit\obj\x86\Release\VideoSplit.csprojResolveAssemblyReference.cache
-C:\Users\jeromy\Projects\VideoSplit\obj\x86\Release\VideoSplit.exe
-C:\Users\jeromy\Projects\VideoSplit\obj\x86\Release\VideoSplit.pdb
