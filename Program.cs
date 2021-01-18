@@ -8,14 +8,15 @@ using System.Drawing;
 
 namespace ConsoleApplication1
 {
-    class Program {
+    class Program
+    {
 
         static string[] video_file_extensions = new string[] { ".3g2", ".3gp", ".asf", ".avi", ".flv", ".h264", ".m2t", ".m2ts", ".m4v", ".mkv", ".mod", ".mov", ".mp4", ".mpg", ".png", ".tod", ".vob", ".webm", ".wmv" };
 
         static List<string> GetFiles(string folder, string[] ext_filter = null, string[] name_filter = null)
         {
             if (!Directory.Exists(folder)) return null;
-            if(folder=="") return new List<string>();
+            if (folder == "") return new List<string>();
             List<string> str = new List<string>();
             int i = 0;
             foreach (string file in Directory.EnumerateFiles(folder, "*.*"))
@@ -23,7 +24,7 @@ namespace ConsoleApplication1
                 string fe = Path.GetExtension(file.ToString());
                 bool add = false;
                 //only include extensions that match ext_filter
-                
+
                 if (ext_filter != null)
                 {
                     foreach (string f in ext_filter)
@@ -65,7 +66,7 @@ namespace ConsoleApplication1
             string file_name = Path.GetFileNameWithoutExtension(file);
             string ext_name = Path.GetExtension(file);
 
-            if (File.Exists(path + "\\" + file_name + pad + "" + ext_name) || file.IndexOf(pad)>=0)
+            if (File.Exists(path + "\\" + file_name + pad + "" + ext_name) || file.IndexOf(pad) >= 0)
             {
                 AddLog("File Exists, skipping normaliztion");
                 return ret;
@@ -101,7 +102,7 @@ namespace ConsoleApplication1
                 string dur = "";
                 int a = line.IndexOf("Duration");
                 int x = line.IndexOf("Segment");
-                if (a >= 0 && x==-1)
+                if (a >= 0 && x == -1)
                 {
                     int b = line.IndexOf(",", a + 1);
                     dur = line.Substring(a + 10, b - a - 10);
@@ -125,9 +126,9 @@ namespace ConsoleApplication1
                 { }
 
                 string pbar = "";
-                for(int t=0;t<50;t++)
+                for (int t = 0; t < 50; t++)
                 {
-                    if(t<=Math.Floor((double)percent/2))
+                    if (t <= Math.Floor((double)percent / 2))
                     {
                         pbar += "█";
                     }
@@ -159,7 +160,7 @@ namespace ConsoleApplication1
                     input_i = line.Substring(a + phrase.Length, b - a - phrase.Length);
                     AddLog("Found input_i: " + line.Substring(a + phrase.Length, b - a - phrase.Length));
                     //Console.WriteLine("Found input_i: " + line.Substring(a + phrase.Length, b - a - phrase.Length));
-                    
+
                 }
 
                 phrase = "\"input_lra\" : \"";
@@ -212,7 +213,7 @@ namespace ConsoleApplication1
             //
             proc.Close();
 
-            
+
 
             string filter = "loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=" + input_i + ":measured_LRA=" + input_lra + ":measured_TP=" + input_tp + ":measured_thresh=" + input_thresh + ":offset=" + input_offset + ":linear=true:print_format=summary";
 
@@ -231,7 +232,8 @@ namespace ConsoleApplication1
             try
             {
                 Console.SetCursorPosition(0, Console.CursorTop + 2);
-            } catch { }
+            }
+            catch { }
 
             TimeSpan total = TimeSpan.FromTicks(DateTime.Now.Ticks - start.Ticks);
 
@@ -303,7 +305,7 @@ namespace ConsoleApplication1
                 Console.SetCursorPosition(0, Console.CursorTop + 1);
             }
             catch { }
-            
+
 
             total = TimeSpan.FromTicks(DateTime.Now.Ticks - start.Ticks);
             Console.WriteLine();
@@ -346,7 +348,7 @@ namespace ConsoleApplication1
 
             //foreach (string file in Directory.EnumerateFiles(folder, "*.*"))
             //{
-                //File.Move(file.ToString(), folder + Path.GetFileName(file.ToString().Replace(" ", "")));
+            //File.Move(file.ToString(), folder + Path.GetFileName(file.ToString().Replace(" ", "")));
             //}
 
             //get duration
@@ -362,7 +364,7 @@ namespace ConsoleApplication1
                 {
                     string[] temp = getDurationAndAudioFilter(file);
                     Console.WriteLine(temp[1]);
-                  //proc.StartInfo.Arguments = "-i " + "\"" + filename + "\"" + " -bsf:v h264_mp4toannexb -f mpegts " + audio_filter + " -vf  \"" + filter + "scale=640:480\" -r 29.97 -y -b:v 2M -ss " + breaks[i - 1].Hours + ":" + breaks[i - 1].Minutes + ":" + breaks[i - 1].Seconds + " -t 00:" + length.Minutes + ":" + length.Seconds + " " + temp_folder + "\\temp" + i.ToString() + ".mpg";
+                    //proc.StartInfo.Arguments = "-i " + "\"" + filename + "\"" + " -bsf:v h264_mp4toannexb -f mpegts " + audio_filter + " -vf  \"" + filter + "scale=640:480\" -r 29.97 -y -b:v 2M -ss " + breaks[i - 1].Hours + ":" + breaks[i - 1].Minutes + ":" + breaks[i - 1].Seconds + " -t 00:" + length.Minutes + ":" + length.Seconds + " " + temp_folder + "\\temp" + i.ToString() + ".mpg";
                     //proc.StartInfo.Arguments = "-i " + "\"" + file.ToString() + "\"" + "  -bsf:v h264_mp4toannexb -f mpegts " + temp[1] + " -vf scale=640:480 -r 29.97 -y -b:v 2M " + "\"" + new_file + "\"";
                     proc.StartInfo.Arguments = "-i \"" + file.ToString() + "\" -vcodec libx264 -crf 23 -s 640x480 -aspect 640:480 -r 29.97 -threads 4 -acodec libvo_aacenc -ab 128k -ar 32000 -async 32000 -ac 2 -scodec copy \"" + new_file + "\"";
                     //proc.StartInfo.Arguments = "-i " + file.ToString() + " -c:v libx264 -preset slow -crf 22 -c:a copy " + new_file;
@@ -380,7 +382,7 @@ namespace ConsoleApplication1
                         Console.WriteLine(line);
                     }
                     proc.Close();
-//                    File.Delete(file.ToString());
+                    //                    File.Delete(file.ToString());
                 }
 
             }
@@ -419,7 +421,7 @@ namespace ConsoleApplication1
 
                         List<TimeSpan> breaks = scanForCommercialBreaks(file, threshhold, 0, 0);
 
-                        foreach(TimeSpan tss in breaks)
+                        foreach (TimeSpan tss in breaks)
                         {
                             Console.WriteLine(tss.ToString());
                         }
@@ -533,11 +535,11 @@ namespace ConsoleApplication1
             {
                 int a = line.IndexOf("Duration");
                 int xx = line.IndexOf("Durations");
-                if (a >= 0 && xx==-1)
+                if (a >= 0 && xx == -1)
                 {
                     int b = line.IndexOf(".", a + 1);
                     dur = line.Substring(a + 10, b - a - 10);
-                    AddLog("Found length "+ dur.ToString());
+                    AddLog("Found length " + dur.ToString());
                     //Console.WriteLine("Found length " + dur.ToString());
                     //return new string[] { dur, "5" };
                 }
@@ -546,12 +548,12 @@ namespace ConsoleApplication1
                 if (a >= 0)
                 {
                     string[] parts = line.Split(new string[] { ", " }, StringSplitOptions.RemoveEmptyEntries);
-                    foreach(string dd in parts) 
+                    foreach (string dd in parts)
                     {
                         if (dd.IndexOf("x") >= 0) resolution = dd;
                     }
                 }
-                
+
                 a = line.IndexOf("max_volume: ");
                 if (a >= 0)
                 {
@@ -572,7 +574,7 @@ namespace ConsoleApplication1
                         audio_filter = "-af \"volume=" + Math.Abs(mean).ToString() + "dB\" ";
                     }
 
-//                    Console.WriteLine(audio_filter);
+                    //                    Console.WriteLine(audio_filter);
                     //Console.ReadKey();
                 }
                 //Console.WriteLine(line);
@@ -583,14 +585,14 @@ namespace ConsoleApplication1
             return new string[] { dur, audio_filter };
         }
 
-        static void joinConcat(string concat, string output_name=null)
+        static void joinConcat(string concat, string output_name = null)
         {
             emptyTemp();
             Process proc = new Process();
             proc.StartInfo.FileName = ffmpeg_location;
             Random rnd = new Random();
-            string file =  "random_commercials_" + rnd.Next(1, 9999).ToString() + ".mpg";
-            if(output_name!=null) file = output_name;
+            string file = "random_commercials_" + rnd.Next(1, 9999).ToString() + ".mpg";
+            if (output_name != null) file = output_name;
             string fname_noext = Path.GetFileNameWithoutExtension(file);
             string fname_root = Path.GetDirectoryName(file);
             string output_folder = Path.GetDirectoryName(ffmpeg_location) + "\\output\\";
@@ -607,9 +609,9 @@ namespace ConsoleApplication1
             Console.Write("AAAAAAAA" + File.ReadAllText("mylist.txt"));
             //Console.ReadKey();
             proc.StartInfo.Arguments = "-f concat -safe 0 -i mylist.txt -c:v libx264 -r 29.97 -preset slow -b:v 800 -crf 28 -c:a copy -vf \"scale=640:480,setdar=4:3\" " + "\"" + output_folder + fname_noext + ".mp4" + "\"";
-            
 
-             AddLog(proc.StartInfo.Arguments);
+
+            AddLog(proc.StartInfo.Arguments);
             Console.Write(proc.StartInfo.Arguments);
             //Console.ReadKey();
             proc.StartInfo.RedirectStandardError = true;
@@ -724,178 +726,6 @@ namespace ConsoleApplication1
             return value.All(char.IsNumber);
         }
 
-        static void convertShow(string file, List<TimeSpan> breaks)
-        {
-            emptyTemp();
-
-
-            Process proc = new Process();
-            proc.StartInfo.FileName = ffmpeg_location;
-
-            string filter = "";
-            string fname_noext = Path.GetFileNameWithoutExtension(file);
-            string fname_root = Path.GetDirectoryName(file);
-
-            string filename = file;
-
-            string output_folder = Path.GetDirectoryName(ffmpeg_location) + "\\output\\";
-
-            string audio_filter = "";
-            //get duration
-            
-            proc.StartInfo.Arguments = "-i " + "\"" + filename + "\"" + "  -af volumedetect -f null -";
-            proc.StartInfo.RedirectStandardError = true;
-            proc.StartInfo.UseShellExecute = false;
-            if (!proc.Start())
-            {
-                Console.WriteLine("Error starting");
-                return;
-            }
-            StreamReader reader = proc.StandardError;
-            
-            string line;
-            TimeSpan interval = new TimeSpan();
-
-            string[] temp = getDurationAndAudioFilter(file);
-            audio_filter = temp[1];
-            interval = TimeSpan.Parse(temp[0]); //duration
-
-
-            //options for video file
-            if (File.Exists(fname_root + "\\" + fname_noext + ".options"))
-            {
-                AddLog("Found video specific options. Parsing...");
-                string[] lines = File.ReadAllLines(fname_root + "\\" + fname_noext + ".options");
-                for (int i = 0; i < lines.Count(); i++)
-                {
-                    string[] opt = lines[i].Split(new string[] { "=" }, StringSplitOptions.None);
-                    if (opt[0].ToLower() == "video_filter" && opt[1]!="")
-                    {
-                        filter = opt[1] + ",";
-                        AddLog("Setting video filter: " + filter);
-                    }
-                    else if (opt[0].ToLower() == "audio_filter" && opt[1] != "")
-                    {
-                        if (opt[1] == "auto")
-                        {
-                            audio_filter = " -af volume=" + temp[1] + "dB:precision=fixed ";
-                        }
-                        else if (opt[1] == "default")
-                        {
-                            audio_filter = " -af volume=15dB:precision=fixed ";
-                        }
-                        else
-                        {
-                            audio_filter = " " + opt[1] + " ";
-                        }
-                        
-                        AddLog("Setting audio filter: " + audio_filter);
-                    }
-                }
-            }
-            proc.Close();
-            double times = 0;
-            //split file
-            if (breaks.Count > 0) //break at set points
-            {
-                AddLog("Going to split this show into " + (breaks.Count).ToString() + " parts");
-                breaks.Add(interval);
-                times = breaks.Count - 1;
-                for (int i = 1; i <= times; i++)
-                {
-                    TimeSpan length = breaks[i] - breaks[i - 1];
-                    AddLog("Commercial break at " + breaks[i].ToString());
-                    AddLog("Length between breaks is " + length.ToString());
-                    //Console.ReadKey();
-
-                    proc.StartInfo.Arguments = "-i " + "\"" + filename + "\"" + " -bsf:v h264_mp4toannexb -f mpegts " + audio_filter + " -vf  \"" + filter + "scale=640:480\" -r 29.97 -y -b:v 2M -ss " + breaks[i - 1].Hours + ":" + breaks[i - 1].Minutes + ":" + breaks[i - 1].Seconds + " -t 00:" + length.Minutes + ":" + length.Seconds + " " + temp_folder + "\\temp" + i.ToString() + ".mpg";
-                    AddLog("Using filter commands: " + proc.StartInfo.Arguments.ToString());
-                    proc.StartInfo.RedirectStandardError = true;
-                    proc.StartInfo.UseShellExecute = false;
-                    if (!proc.Start())
-                    {
-                        Console.WriteLine("Error starting");
-                        return;
-                    }
-                    reader = proc.StandardError;
-                    while ((line = reader.ReadLine()) != null)
-                    {
-                        Console.WriteLine(line);
-                    }
-                    proc.Close();
-                }
-
-            }
-            else
-            {
-                double totalMins = interval.TotalMinutes;
-                int length_in_minutes = 11;
-                times = totalMins / length_in_minutes;
-                for (int i = 0; i < times; i++)
-                {
-
-                    proc.StartInfo.Arguments = "-i " + "\"" + filename + "\"" + " -bsf:v h264_mp4toannexb -f mpegts " + audio_filter + " -vf  \"" + filter + "scale=640:480\" -r 29.97 -y -b:v 2M -ss 00:" + i * length_in_minutes + ":00 -t 00:" + length_in_minutes.ToString() + ":00 " + temp_folder + "\\temp" + i.ToString() + ".mpg";
-                    proc.StartInfo.RedirectStandardError = true;
-                    proc.StartInfo.UseShellExecute = false;
-                    if (!proc.Start())
-                    {
-                        Console.WriteLine("Error starting");
-                        return;
-                    }
-                    reader = proc.StandardError;
-                    while ((line = reader.ReadLine()) != null)
-                    {
-                        Console.WriteLine(line);
-                    }
-                    proc.Close();
-                }
-            }
-            string concat = "";
-            AddLog("Generating CONCAT string...");
-            for (int i = 1; i <= times; i++)
-            {
-                if (File.Exists(temp_folder + "\\temp" + i.ToString() + ".mpg"))
-                {
-                    concat += temp_folder + "\\temp" + i.ToString() + ".mpg|" + (new Foo().getSomeCommercials(Path.GetDirectoryName(ffmpeg_location), 4));
-                }
-                else
-                {
-                    Console.WriteLine(temp_folder + "\\temp" + i.ToString() + ".mpg does not exist!");
-                    AddLog("Could not find file #" + i.ToString());
-                }
-
-            }
-            concat = concat.Substring(0, concat.Length - 1);
-            AddLog("CONCAT string generated: " + concat);
-            Console.WriteLine("-i \"concat:" + concat + "\" -c copy -f mpegts -analyzeduration 2147483647 -probesize 2147483647 -y -b:v 2M " + output_folder + fname_noext + ".mpg");
-            
-            //Console.ReadKey();
-            //proc.StartInfo.Arguments = "-i \"concat:" + concat + "\" -c copy -f mpegts -analyzeduration 2147483647 -probesize 2147483647 -y -b:v 2M " + output_folder + fname_noext + ".mpg";
-            proc.StartInfo.Arguments = "-i \"concat:" + concat + "\" -c:v libx264 -r 29.97 -preset slow -b:v 800 -crf 28 -c:a copy " + "\"" + output_folder + fname_noext + ".mp4" + "\"";
-            AddLog(proc.StartInfo.Arguments.ToString());
-            proc.StartInfo.RedirectStandardError = true;
-            proc.StartInfo.UseShellExecute = false;
-            AddLog("Merging all files and commercials...");
-            if (!proc.Start())
-            {
-                Console.WriteLine("Error starting");
-                return;
-            }
-            reader = proc.StandardError;
-            while ((line = reader.ReadLine()) != null)
-            {
-                Console.WriteLine(line);
-            }
-            proc.Close();
-            
-            //joinConcat(concat);
-
-            AddLog("Merge complete.");
-            AddLog("Finished converting " + file.ToString());
-            Console.WriteLine("Finished!");
-            return;
-        }
-
         static void emptyTemp()
         {
             string folder = temp_folder;
@@ -1006,13 +836,13 @@ namespace ConsoleApplication1
 
             File.WriteAllText(output_folder + "files.txt", concat);
 
-            while(File.Exists(output_folder + "files.txt")==false)
+            while (File.Exists(output_folder + "files.txt") == false)
             {
                 Console.WriteLine("Waiting for file to write...");
             }
 
 
-            if(File.Exists(output_folder + "files.txt")== false)
+            if (File.Exists(output_folder + "files.txt") == false)
             {
                 Console.WriteLine("File no exists!!!!!!!!!!!!!!!!!!");
             }
@@ -1046,7 +876,7 @@ namespace ConsoleApplication1
 
         }
 
-        static List<TimeSpan> scanForCommercialBreaks(string file, double threshhold, double wait, int min_time_add=300)
+        static List<TimeSpan> scanForCommercialBreaks(string file, double threshhold, double wait, int min_time_add = 300)
         {
             Process proc = new Process();
             proc.StartInfo.FileName = ffmpeg_location;
@@ -1075,7 +905,7 @@ namespace ConsoleApplication1
             DateTime now = DateTime.Now;
             while ((line = reader.ReadLine()) != null)
             {
-                if((DateTime.Now - now) > TimeSpan.FromSeconds(.5))
+                if ((DateTime.Now - now) > TimeSpan.FromSeconds(.5))
                 {
                     Console.Write("_");
                     now = DateTime.Now;
@@ -1131,7 +961,7 @@ namespace ConsoleApplication1
             List<TimeSpan> commerical_breaks = new List<TimeSpan>();
             commerical_breaks.Add(TimeSpan.FromSeconds(0));
             int last = 0;
-            for(int i = 0;i<nums.Count;i++) 
+            for (int i = 0; i < nums.Count; i++)
             {
                 TimeSpan t = nums[i];
                 //Console.WriteLine(i + " - " + t.ToString());
@@ -1140,8 +970,8 @@ namespace ConsoleApplication1
                     if (last != 0)
                     {
 
-                        TimeSpan q = nums[last+1];
-                        TimeSpan qa = nums[i-1];
+                        TimeSpan q = nums[last + 1];
+                        TimeSpan qa = nums[i - 1];
                         //Console.WriteLine("Total: " + (qa - q).TotalSeconds + " - " + qa.ToString() + " - " + q.ToString());
                         AddLog("Total: " + (qa - q).TotalSeconds + " - " + qa.ToString() + " - " + q.ToString() + " ticks:" + (qa - q).Ticks + " thresh hold:" + TimeSpan.FromSeconds(threshhold).Ticks);
                         if ((qa - q).Ticks > TimeSpan.FromSeconds(threshhold).Ticks)
@@ -1161,7 +991,7 @@ namespace ConsoleApplication1
                         last = i;
                     }
                 }
-                
+
                 //Console.WriteLine(t.ToString());
             }
             Console.WriteLine("#");
@@ -1169,7 +999,7 @@ namespace ConsoleApplication1
             AddLog("Commercial breaks found: " + commerical_breaks.Count);
             //Console.ReadKey();
             proc.Close();
-            
+
             TimeSpan lt = new TimeSpan(0, 0, 0);
             List<TimeSpan> new_com = new List<TimeSpan>();
             foreach (TimeSpan t in commerical_breaks)
@@ -1186,7 +1016,7 @@ namespace ConsoleApplication1
             }
 
             return new_com;
-            
+
             //return commerical_breaks;
         }
 
@@ -1203,7 +1033,7 @@ namespace ConsoleApplication1
         static void AddLog(string log)
         {
             if (Log_File == "") return;
-            File.AppendAllText(Log_File + "\\log.txt", DateTime.Now.ToString() + "    " +  log + "\r\n");
+            File.AppendAllText(Log_File + "\\log.txt", DateTime.Now.ToString() + "    " + log + "\r\n");
         }
 
         static List<TimeSpan> breakz = new List<TimeSpan>();
@@ -1321,13 +1151,13 @@ namespace ConsoleApplication1
         {
 
             string app_path = AppDomain.CurrentDomain.BaseDirectory.ToString();
-            if(File.Exists(app_path + "\\settings.txt"))
+            if (File.Exists(app_path + "\\settings.txt"))
             {
                 string[] lines = File.ReadAllLines(app_path + "\\settings.txt");
                 for (int i = 0; i < lines.Count(); i++)
                 {
                     string[] opt = lines[i].Split(new string[] { "=" }, StringSplitOptions.RemoveEmptyEntries);
-                    switch(opt[0].ToLower().Trim())
+                    switch (opt[0].ToLower().Trim())
                     {
                         case "ffmpeg location":
                             Console.WriteLine("Setting FFMPEG location to " + opt[1]);
@@ -1563,7 +1393,7 @@ namespace ConsoleApplication1
                                     else
                                     {
                                         AddLog("No breaks found");
-                                        if(print_anyway)
+                                        if (print_anyway)
                                         {
                                             Console.WriteLine("");
                                             Console.WriteLine("No breaks found, making some up!");
@@ -1582,7 +1412,7 @@ namespace ConsoleApplication1
                                                 Console.WriteLine(sbreaks);
                                                 File.WriteAllText(spb_output, sbreaks.Substring(0, sbreaks.Length - 1));
                                             }
-                                            
+
                                         }
                                     }
 
@@ -1652,7 +1482,7 @@ namespace ConsoleApplication1
                         Console.WriteLine("");
                         Console.WriteLine("");
 
-                        checkSplits(split_in_folder,split_out_folder, ithresh);
+                        checkSplits(split_in_folder, split_out_folder, ithresh);
 
                         drawMessage("Splits have been checked!");
                         AddLog("Splits have been checked.");
@@ -1668,7 +1498,7 @@ namespace ConsoleApplication1
                         //auto scan vidow for black bars
 
                         drawScreen(5); //bars
-                        
+
                         Console.WriteLine("Enter path to video files:");
                         string bbars_folder = Console.ReadLine();
 
@@ -1686,7 +1516,7 @@ namespace ConsoleApplication1
                         string str_result = Console.ReadLine();
                         int black_level = 10;
 
-                        if (IsNumeric(str_result) && str_result!="") black_level = int.Parse(str_result);
+                        if (IsNumeric(str_result) && str_result != "") black_level = int.Parse(str_result);
 
                         Console.WriteLine();
                         Console.WriteLine();
@@ -1920,219 +1750,6 @@ namespace ConsoleApplication1
                         break;
                 }
             }
-
-            
-
-            /*
-
-            if (File.Exists(folder + "\\rnd.txt")) //create 15 random commercial videos
-            {
-                Console.WriteLine("Nice! Gonna make some randon commercial blocks...");
-                Console.ReadKey();
-                for (int i = 0; i < 15; i++)
-                {
-                    string tmp_comm = new Foo().getSomeCommercials(Path.GetDirectoryName(ffmpeg_location), 5);
-                    Console.WriteLine("Got the commercials..." + tmp_comm);
-
-                    joinConcat(tmp_comm);
-
-                    Console.WriteLine("Random Commercials saved!");
-                }
-                File.Delete(folder + "\\rnd.txt"); //delete it so we don't keep creating rnd videos.
-                Console.ReadKey();
-            }
-
-
-            Console.WriteLine("Checking " + commercials.Count + " conversion file(s)....");
-            AddLog("Checking to see if any files need to be converted to MP4");
-            checkCommercials();
-            Console.WriteLine("Files have been checked! Press any Key to continue....");
-            AddLog("Conversions have been checked.");
-            Console.ReadKey();
-            Console.WriteLine("Checking for video to split....");
-            AddLog("Checking to see if any videos need to be split.");
-
-
-            Console.WriteLine("Checking for video to join....");
-            AddLog("Checking to see if any videos need to be joined.");
-            joinVideos();
-            Console.WriteLine("Joins have been checked! Press any Key to continue....");
-            AddLog("Joins have been checked.");
-            Console.ReadKey();
-            
-            while(shows.Count > 0)
-            {
-                
-                AddLog("Begin convert of " + shows[0].ToString());
-                AddLog("Scanning show for commercial breaks.");
-                breakz.Add(TimeSpan.Parse("0"));
-
-                string ocomms = getVideoOption(shows[0].ToString(), "commercials");
-                AddLog("Checking for predefined commercials " + shows[0].ToString());
-
-                if (ocomms!=null || File.Exists(folder + "\\shows\\shared_breaks.txt"))
-                {
-                    string[] lines;
-                    if (ocomms != null)
-                    {
-                        lines = ocomms.Split(new string[] { ";" }, StringSplitOptions.RemoveEmptyEntries);
-                    }
-                    else
-                    {
-                        string fname = folder + "\\shows\\" + "shared_breaks.txt";
-                        Console.WriteLine("Ohhhh! Manually adding SHAREDcommercial breaks? Excellent...");
-                        lines = File.ReadAllLines(fname);
-                    }
-
-                    for (int i = 0; i < lines.Count(); i++)
-                    {
-                        Console.WriteLine("Found commercial break at: " + lines[i]);
-                        breakz.Add(TimeSpan.Parse(lines[i]));
-                    }
-                }
-                else
-                {
-                    double thresh = .5;
-                    string othresh = getVideoOption(shows[0].ToString(), "threshold");
-                    AddLog("Checking for threshold " + shows[0].ToString());
-                    if (othresh!=null)
-                    {
-                        thresh = Convert.ToDouble(othresh);
-                        AddLog("Threshold found: " + thresh.ToString());
-                    }
-                    breakz = scanForCommercialBreaks(shows[0].ToString(), thresh, 0);
-                }
-
-                Console.WriteLine("Found all the breaks, press any key...");
-                //Console.ReadKey();
-
-                AddLog("Commercial breaks scan complete. Found " + breakz.Count.ToString() + " commercial breaks.");
-                Console.WriteLine(breakz.Count.ToString());
-                //Console.ReadKey();
-                AddLog("Actual show conversion is beginning...");
-                convertShow(shows[0].ToString(), breakz);
-                AddLog("Show has been converted.");
-                emptyTemp();
-                Console.WriteLine("All done!");
-                shows.RemoveAt(0);
-
-            }
-
-            //convertShow(folder + "comm\\80sKidsCommercials-1987-volume16685.mpg");
-
-            //-vf "blackdetect=d=2:pix_th=0.00"
-            emptyTemp();
-            Console.WriteLine("All done! Press a key.");
-            Console.ReadKey();
-            AddLog("END LOG");
-            Environment.Exit(0);
-            return;
-           
-            */
         }
     }
-/*split shows based on file time
-            if (File.Exists(fname_root + fname_noext + ".txt"))
-            {
-                
-                                    TimeSpan start = new TimeSpan();
-                TimeSpan stop = new TimeSpan();
-                TimeSpan diff = new TimeSpan();
-                string[] lines = File.ReadAllLines(fname_root + fname_noext + ".txt");
-                times = lines.Count();
-                for (int z = 1; z < times; z++)
-                {
-
-                    start = TimeSpan.Parse(lines[z - 1]);
-                    stop = TimeSpan.Parse(lines[z]);
-                    diff = stop - start;
-                    string start_str = "00:" + lines[z - 1];
-                    string length_str = "00:" + diff.ToString().Substring(0, diff.ToString().LastIndexOf(":"));
-
-                    proc.StartInfo.Arguments = "-i " + filename + " -bsf:v h264_mp4toannexb -f mpegts " + audio_filter + " -vf scale=640:480 -r 29.97 -y -b:v 2M -ss-ss " + start_str + " -t " + length_str + " c:\\ffmpeg\\temp\\temp" + (z-1).ToString() + ".mpg";
-                    proc.StartInfo.RedirectStandardError = true;
-                    proc.StartInfo.UseShellExecute = false;
-                    if (!proc.Start())
-                    {
-                        Console.WriteLine("Error starting");
-                        return;
-                    }
-                    reader = proc.StandardError;
-                    while ((line = reader.ReadLine()) != null)
-                    {
-                        Console.WriteLine(line);
-                    }
-                    proc.Close();
-                }
-            }
-            else 
- */
-    public class Foo
-    {
-        private static readonly Random random = new Random();
-        private static readonly object syncLock = new object();
-        public static int RandomNumber(int min, int max)
-        {
-            lock(syncLock) { // synchronize
-                return random.Next(min, max);
-            }
-        }
-
-        public string getSomeCommercials(string folder, int cnt = 3)
-        {
-            List<string> commercials = GetFiles(folder + "\\comm\\");
-            List<string> bumpers_open = GetFiles(folder + "\\bopen\\");
-            List<string> bumpers_close = GetFiles(folder + "\\bclose\\");
-
-            string str = "";
-
-            string f = null;
-            int r = 0;
-
-            if (bumpers_open.Count <= 0)
-            {
-                f = "";
-            }
-            else
-            {
-                r = RandomNumber(0, bumpers_open.Count - 1);
-                f = (string)bumpers_open[r] + "|";
-            }
-            
-            str += f ;
-            for (var i = 0; i < cnt; i++)
-            {
-                r = RandomNumber(0, commercials.Count - 1);
-                f = (string)commercials[r];
-
-                //str += f + "|";
-                str += "file '" + f.Replace("\\", "\\\\") + "'\n";
-                
-                
-            }
-            Console.Write(str);
-            //Console.ReadKey();
-
-            if (bumpers_open.Count > 0)
-            {
-                r = RandomNumber(0, bumpers_close.Count - 1);
-                str += (string)bumpers_close[r] + "|";
-            }
-
-            return str;
-        }
-
-        public List<string> GetFiles(string folder)
-        {
-            List<string> str = new List<string>();
-            int i = 0;
-            foreach (string file in Directory.EnumerateFiles(folder, "*.*"))
-            {
-                str.Add(file.ToString());
-                i++;
-            }
-            return str;
-        }
-    }
-
 }
