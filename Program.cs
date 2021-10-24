@@ -11,7 +11,7 @@ namespace ConsoleApplication1
     class Program
     {
 
-        static string[] video_file_extensions = new string[] { ".3g2", ".3gp", ".asf", ".avi", ".flv", ".h264", ".m2t", ".m2ts", ".m4v", ".mkv", ".mod", ".mov", ".mp4", ".mpg", ".png", ".tod", ".vob", ".webm", ".wmv" };
+        static string[] video_file_extensions = new string[] { ".3g2", ".3gp", ".asf", ".avi", ".flv", ".h264", ".m2t", ".m2ts", ".m4a", ".m4v", ".mkv", ".mod", ".mov", ".mp3", ".mp4", ".mpg", ".png", ".tod", ".vob", ".webm", ".wmv" };
 
         static List<string> GetFiles(string folder, string[] ext_filter = null, string[] name_filter = null)
         {
@@ -1403,14 +1403,21 @@ namespace ConsoleApplication1
                                             if (atime[0] != "")
                                             {
                                                 double ilength = (double)TimeSpan.Parse(atime[0]).TotalSeconds;
-                                                int ibreaks = (int)Math.Floor(ilength / 600);
-                                                string sbreaks = "";
-                                                for (int i = 1; i <= ibreaks; i++)
+                                                if (ilength >= 0)
                                                 {
-                                                    if ((600 * i) < ilength) sbreaks += (600 * i).ToString() + "\n";
+                                                    Console.WriteLine("Found length: " + atime[0].ToString());
+                                                    int ibreaks = (int)Math.Floor(ilength / 600);
+                                                    string sbreaks = "";
+                                                    for (int i = 1; i <= ibreaks; i++)
+                                                    {
+                                                        if ((600 * i) < ilength) sbreaks += (600 * i).ToString() + "\n";
+                                                    }
+                                                    Console.WriteLine(sbreaks);
+                                                    if (sbreaks != "")
+                                                    {
+                                                        File.WriteAllText(spb_output, sbreaks.Substring(0, sbreaks.Length - 1));
+                                                    }
                                                 }
-                                                Console.WriteLine(sbreaks);
-                                                File.WriteAllText(spb_output, sbreaks.Substring(0, sbreaks.Length - 1));
                                             }
 
                                         }
