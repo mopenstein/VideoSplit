@@ -388,7 +388,7 @@ namespace ConsoleApplication1
             }
         }
 
-        static void checkSplits(string in_path, string out_path, double threshhold)
+        static void checkSplits(string in_path, string out_path, double threshhold, double black_level)
         {
             Process proc = new Process();
             proc.StartInfo.FileName = ffmpeg_location;
@@ -419,7 +419,8 @@ namespace ConsoleApplication1
                     if (auto_split == true)
                     {
 
-                        List<TimeSpan> breaks = scanForCommercialBreaks(file, threshhold, 0, 0);
+                        //List<TimeSpan> breaks = scanForCommercialBreaks(file, threshhold, 0, 0);
+                        List<TimeSpan> breaks = NEWscanForCommercialBreaks(file, threshhold, 0, 0, 0, black_level);
 
                         foreach (TimeSpan tss in breaks)
                         {
@@ -876,6 +877,153 @@ namespace ConsoleApplication1
 
         }
 
+        static TimeSpan getVideoDuration(string file)
+        {
+            Process proc = new Process();
+            proc.StartInfo.FileName = ffmpeg_location;
+
+            string filename = file;
+            string dur = "";
+            AddLog("Getting Duration " + file.ToString());
+            //get duration
+            proc.StartInfo.Arguments = "-i " + "\"" + filename + "\"" + " -f null -";
+            proc.StartInfo.RedirectStandardError = true;
+            proc.StartInfo.UseShellExecute = false;
+            if (!proc.Start())
+            {
+                Console.WriteLine("Error starting");
+            }
+            StreamReader reader = proc.StandardError;
+            string line;
+            while ((line = reader.ReadLine()) != null)
+            {
+                int a = line.IndexOf("Duration");
+                int xx = line.IndexOf("Durations");
+                if (a >= 0 && xx == -1)
+                {
+                    int b = line.IndexOf(".", a + 1);
+                    dur = line.Substring(a + 10, b - a - 10);
+                    AddLog("Found length " + dur.ToString());
+                    proc.Kill();
+                    //proc.Close();
+                    return TimeSpan.Parse(dur);
+                    //Console.WriteLine("Found length " + dur.ToString());
+                    //return new string[] { dur, "5" };
+                }
+
+            }
+            //Console.ReadKey();
+            proc.Close();
+            return new TimeSpan();
+        }
+
+        static List<TimeSpan> NEWscanForCommercialBreaks(string file, double threshhold, double wait, int min_time_add = 300, int min_end_time = 59, double black_level=0.05)
+        {
+            TimeSpan vid_dur = getVideoDuration(file);
+
+            Process proc = new Process();
+            proc.StartInfo.FileName = ffmpeg_location;
+
+            string fname_noext = Path.GetFileNameWithoutExtension(file);
+            string fname_root = Path.GetDirectoryName(file);
+
+            string filename = file;
+
+            //get duration
+            proc.StartInfo.Arguments = "-i \"" + filename + "\" -vf \"blackdetect=d=" + threshhold.ToString() + ":pix_th=" + black_level.ToString() + "\" -an -f null -";
+            AddLog("scanForCommercialBreaks:" + proc.StartInfo.Arguments);
+
+            proc.StartInfo.RedirectStandardError = true;
+            proc.StartInfo.UseShellExecute = false;
+            if (!proc.Start())
+            {
+                AddLog("Error starting");
+            }
+            StreamReader reader = proc.StandardError;
+            List<TimeSpan> nums = new List<TimeSpan>();
+            string line;
+            AddLog("Scanning for Commercial Breaks...");
+            DateTime now = DateTime.Now;
+            //nums.Add(TimeSpan.FromSeconds(0));
+            double last_break = 0;
+            while ((line = reader.ReadLine()) != null)
+            {
+
+                if ((DateTime.Now - now) > TimeSpan.FromSeconds(.25))
+                {
+                    //drawn a placeholder so the user doesn't think the process locked up
+                    Console.Write(".");
+                    now = DateTime.Now;
+                }
+
+                //AddLog(line.ToString());
+                int a = line.IndexOf("blackdetect");
+                if (a >= 0)
+                {
+                    a = line.IndexOf("black_start:");
+                    int b = line.IndexOf(" ", a + 1);
+                    double bstart = Convert.ToDouble(line.Substring(a + 12, b - a - 12));
+
+                    a = line.IndexOf("black_end:", b + 1);
+                    b = line.IndexOf(" ", a + 1);
+                    double bend = Convert.ToDouble(line.Substring(a + 10, b - a - 10));
+
+                    a = line.IndexOf("black_duration:", b + 1);
+                    b = line.Length;
+                    double bdur = Convert.ToDouble(line.Substring(a + 15, b - a - 15));
+
+                    double bmed = ((bstart + bend) / 2);
+
+                    //AddLog(bmed + " - " + wait);
+                    //commercial breaks must start after the minimum wait time and be less than video length minus minimum end time
+                    if (bmed > wait && ((vid_dur.TotalSeconds - bmed) > min_end_time))
+                    {
+                        //time between breaks must be longer than the set minimum time
+                        if (((bmed - last_break) > min_time_add))
+                        {
+                            nums.Add(TimeSpan.FromSeconds(bmed));
+                            last_break = bmed;
+                            Console.Write("+");
+                        }
+                        else if (nums.Count == 0) //we should add first break regardless of minimun time difference 
+                        {
+                            nums.Add(TimeSpan.FromSeconds(bmed));
+                            last_break = bmed;
+                            Console.Write("+");
+                        }
+                        else
+                        {
+                            Console.Write("x");
+                        }
+                    }
+
+                    //AddLog("start: " + TimeSpan.FromSeconds(bstart).ToString() + " end: " + TimeSpan.FromSeconds(bend).ToString() + " median: " + TimeSpan.FromSeconds(bmed).ToString() + " duration: " + bdur);
+                }
+            }
+            Console.WriteLine();
+            AddLog("Finished scan..... found " + nums.Count.ToString() + " breaks");
+            try
+            {
+                proc.Kill();
+            }
+            catch
+            {
+
+            }
+            try
+            {
+                proc.Close();
+            }
+            catch
+            {
+
+            }
+            //
+            return nums;
+
+            //return commerical_breaks;
+        }
+
         static List<TimeSpan> scanForCommercialBreaks(string file, double threshhold, double wait, int min_time_add = 300)
         {
             Process proc = new Process();
@@ -1086,6 +1234,18 @@ namespace ConsoleApplication1
                     Console.WriteLine(@" /_/   \_\__,_|\__\___/ \___|_|  \___/| .__/ ");
                     Console.WriteLine(@"                                      |_|    ");
                     break;
+                case 6:
+                    Console.Clear();
+                    Console.WriteLine("  _____      _       _     ____                 _        ");
+                    Console.WriteLine(" |  __ \\    (_)     | |   |  _ \\               | |       ");
+                    Console.WriteLine(" | |__) | __ _ _ __ | |_  | |_) |_ __ ___  __ _| | _____ ");
+                    Console.WriteLine(" |  ___/ '__| | '_ \\| __| |  _ <| '__/ _ \\/ _` | |/ / __|");
+                    Console.WriteLine(" | |   | |  | | | | | |_  | |_) | | |  __/ (_| |   <\\__ \\");
+                    Console.WriteLine(" |_|   |_|  |_|_| |_|\\__| |____/|_|  \\___|\\__,_|_|\\_\\___/");
+                    Console.WriteLine(" ------------------------------------------------------------- ");
+                    Console.WriteLine(" | TEST                                                      |");
+                    Console.WriteLine(" ------------------------------------------------------------- ");
+                    break;
                 case 9:
                     Console.WriteLine(@"    )    (               (         )       )   (     ");
                     Console.WriteLine(@" ( /(    )\ )    *   )   )\ )   ( /(    ( /(   )\ )  ");
@@ -1114,6 +1274,7 @@ namespace ConsoleApplication1
                     Console.WriteLine("█   [ 3 ] - Split Video                                  █");
                     Console.WriteLine("█   [ 4 ] - Generate Breaks                              █");
                     Console.WriteLine("█   [ 5 ] - Autocrop                                     █");
+                    Console.WriteLine("█   [ 6 ] - Test Print Breaks                            █");
                     Console.WriteLine("█                                                        █");
                     Console.WriteLine("█   [ 9 ] - Options                                      █");
                     Console.WriteLine("█                                                        █");
@@ -1332,7 +1493,7 @@ namespace ConsoleApplication1
 
                             Console.WriteLine("");
                             Console.WriteLine("");
-                            Console.WriteLine("Enter threshold: (length of time to be considered, default 0.5 seconds)");
+                            Console.WriteLine("Enter threshold: (length of BLACK frames to be considered, default 0.5 seconds)");
                             string athresh = Console.ReadLine();
                             double iathresh = 0.5;
                             try
@@ -1341,20 +1502,59 @@ namespace ConsoleApplication1
                             }
                             catch { }
 
+                            Console.WriteLine("");
+                            Console.WriteLine("");
+                            Console.WriteLine("Enter black luminance: (pure black=0, black=0.05, light black=0.1, etc, default 0.05)");
+                            string ablack = Console.ReadLine();
+                            double iblack = 0.10;
+                            try
+                            {
+                                if (ablack != "") iblack = Double.Parse(ablack);
+                            }
+                            catch { }
+
                             Console.WriteLine("Threshold set to " + iathresh.ToString() + " sec(s)");
 
                             Console.WriteLine("");
                             Console.WriteLine("");
-                            Console.WriteLine("Enter minimum start time: (length of time to be considered, default 0 seconds)");
+                            Console.WriteLine("Enter minimum start time: (time from beginning of video, default 0 seconds)");
                             string dwait = Console.ReadLine();
-                            double iwait = -1;
+                            double iwait = 0;
                             try
                             {
                                 if (dwait != "") iwait = Double.Parse(dwait);
                             }
                             catch { }
 
-                            Console.WriteLine("Minimum start time is " + iwait.ToString() + " sec(s)");
+                            Console.WriteLine("Minimum start time set to " + iwait.ToString() + " sec(s)");
+
+                            Console.WriteLine("");
+                            Console.WriteLine("");
+                            Console.WriteLine("Enter minimum length between breaks: (how long after the last break for a new break, default 300 seconds)");
+                            string dblength = Console.ReadLine();
+                            int iblength = 300;
+                            try
+                            {
+                                if (dblength != "") iblength = Int32.Parse(dblength);
+                            }
+                            catch { }
+
+
+                            Console.WriteLine("Minimum length is " + iblength.ToString() + " sec(s)");
+
+                            Console.WriteLine("");
+                            Console.WriteLine("");
+                            Console.WriteLine("Enter time from end of video to stop looking for breaks: (default 0 seconds)");
+                            string dend = Console.ReadLine();
+                            int iend = 0;
+                            try
+                            {
+                                if (dend != "") iend = Int32.Parse(dend);
+                            }
+                            catch { }
+
+
+                            Console.WriteLine("End of video minus " + iend.ToString() + " sec(s)");
 
 
                             Console.WriteLine("");
@@ -1372,16 +1572,18 @@ namespace ConsoleApplication1
 
                                 if (!File.Exists(spb_output))
                                 {
-                                    List<TimeSpan> cms = scanForCommercialBreaks(print_breaks[0], 0.5, iwait);
+                                    //List<TimeSpan> cms = scanForCommercialBreaks(print_breaks[0], 0.5, iwait);
+                                    List<TimeSpan> cms = NEWscanForCommercialBreaks(print_breaks[0], iathresh, iwait, iblength, iend, iblack);
                                     Console.Write(cms.Count.ToString());
                                     //Console.ReadKey();
                                     string spb = "";
-                                    cms.RemoveAt(0);
                                     foreach (TimeSpan t in cms)
                                     {
                                         AddLog("Found commercial at (in seconds): " + Math.Floor(t.TotalSeconds).ToString());
                                         //AddLog("Found commercial at (in seconds): " + (t.TotalSeconds).ToString());
-                                        spb += Math.Floor(t.TotalSeconds).ToString() + "\n";
+                                        //spb += Math.Floor(t.TotalSeconds).ToString() + "\n";
+                                        spb += t.TotalSeconds.ToString() + "\n";
+
                                         //spb += (t.TotalSeconds).ToString() + "\n";
 
                                     }
@@ -1488,8 +1690,21 @@ namespace ConsoleApplication1
 
                         Console.WriteLine("");
                         Console.WriteLine("");
+                        Console.WriteLine("Enter black level: (0=pure black, 0.1=black, 0.2=light black, etc, default 0.05)");
+                        string lblack= Console.ReadLine();
+                        double ilblack = 0.05;
+                        try
+                        {
+                            if (lblack != "") ilblack = Double.Parse(lblack);
+                        }
+                        catch { }
 
-                        checkSplits(split_in_folder, split_out_folder, ithresh);
+                        Console.WriteLine("Threshold set to " + ilblack.ToString() + " sec(s)");
+
+                        Console.WriteLine("");
+                        Console.WriteLine("");
+
+                        checkSplits(split_in_folder, split_out_folder, ithresh, ilblack);
 
                         drawMessage("Splits have been checked!");
                         AddLog("Splits have been checked.");
@@ -1693,6 +1908,109 @@ namespace ConsoleApplication1
                         }
 
                         break;
+                    case '6': //print breaks test
+                        List<string> print_breaks_test = new List<string>(); // GetFiles(@"G:\Projects\Video\torrents\Murder She Wrote - Season 4");// folder + "\\print_breaks\\");
+
+                        drawScreen(6);//print breaks
+
+                        Console.WriteLine("Enter path to video file: (leave blank to skip)");
+                        string print_file = Console.ReadLine();
+                        if (print_file == "") break;
+
+                        if (!File.Exists(print_file))
+                        {
+                            drawMessage("Path does not exist");
+                            break;
+                        }
+
+                        Console.WriteLine("");
+                        Console.WriteLine("");
+                        Console.WriteLine("Enter threshold: (length of BLACK frames to be considered, default 0.5 seconds)");
+                        string atthresh = Console.ReadLine();
+                        double itathresh = 0.5;
+                        try
+                        {
+                            if (atthresh != "") itathresh = Double.Parse(atthresh);
+                        }
+                        catch { }
+
+                        Console.WriteLine("");
+                        Console.WriteLine("");
+                        Console.WriteLine("Enter black luminance: (pure black=0, black=0.05, light black=0.1, etc, default 0.05)");
+                        string atblack = Console.ReadLine();
+                        double itblack = 0.10;
+                        try
+                        {
+                            if (atblack != "") itblack = Double.Parse(atblack);
+                        }
+                        catch { }
+
+                        Console.WriteLine("Threshold set to " + itblack.ToString() + " sec(s)");
+
+                        Console.WriteLine("");
+                        Console.WriteLine("");
+                        Console.WriteLine("Enter minimum start time: (time from beginning of video, default 0 seconds)");
+                        string dtwait = Console.ReadLine();
+                        double itwait = 0;
+                        try
+                        {
+                            if (dtwait != "") itwait = Double.Parse(dtwait);
+                        }
+                        catch { }
+
+                        Console.WriteLine("Minimum start time set to " + itwait.ToString() + " sec(s)");
+
+                        Console.WriteLine("");
+                        Console.WriteLine("");
+                        Console.WriteLine("Enter minimum length between breaks: (how long after the last break for a new break, default 300 seconds)");
+                        string dtlength = Console.ReadLine();
+                        int itlength = 300;
+                        try
+                        {
+                            if (dtlength != "") itlength = Int32.Parse(dtlength);
+                        }
+                        catch { }
+
+
+                        Console.WriteLine("Minimum length is " + itlength.ToString() + " sec(s)");
+
+                        Console.WriteLine("");
+                        Console.WriteLine("");
+                        Console.WriteLine("Enter time from end of video to stop looking for breaks: (default 0 seconds)");
+                        string dtend = Console.ReadLine();
+                        int itend = 0;
+                        try
+                        {
+                            if (dtend != "") itend = Int32.Parse(dtend);
+                        }
+                        catch { }
+
+
+                        Console.WriteLine("End of video minus " + itend.ToString() + " sec(s)");
+
+                        Console.WriteLine("");
+                        Console.WriteLine("Scanning for commercials...");
+                        Console.WriteLine("");
+                        List<TimeSpan> tcms = NEWscanForCommercialBreaks(print_file, itathresh, itwait, itlength, itend, itblack);
+                        Console.WriteLine("Found " + tcms.Count.ToString() + " commercial(s)");
+                        Console.WriteLine("");
+                        foreach (TimeSpan t in tcms)
+                        {
+                            Console.WriteLine("Found commercial at (in seconds): " + t.ToString());
+
+                        }
+                        Console.WriteLine("");
+                        Console.WriteLine("Settings used:");
+                        Console.WriteLine("Threshhold: " + itathresh.ToString());
+                        Console.WriteLine("Black Luminance: " + itblack.ToString());
+                        Console.WriteLine("Minimum Start time: " + itwait.ToString());
+                        Console.WriteLine("Minimum length between breaks: " + itlength.ToString());
+                        Console.WriteLine("Time from end of video to stop checking: " + itend.ToString());
+                        Console.WriteLine("");
+                        Console.WriteLine("Press any key to return to options");
+                        Console.ReadKey();
+                break;
+
                     case '9':
                         //options
                         drawScreen(9); //options
