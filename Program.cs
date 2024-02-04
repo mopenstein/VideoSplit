@@ -501,10 +501,6 @@ namespace ConsoleApplication1
                         //Console.ReadKey();
 
                         TimeSpan interval = new TimeSpan();
-
-                        string[] temp = getDurationAndAudioFilter(file);
-                        string audio_filter = temp[1];
-                        AddLog("audio filter: " + audio_filter);
                         breaks.Add(interval);
                         foreach (TimeSpan aa in breaks)
                         {
@@ -996,7 +992,7 @@ namespace ConsoleApplication1
             return new TimeSpan();
         }
 
-        static List<TimeSpan> NEWscanForCommercialBreaks(string file, double threshhold, double wait, int min_time_add = 300, int min_end_time = 59, double black_level=0.05)
+        static List<TimeSpan> NEWscanForCommercialBreaks(string file, double threshhold, double wait, int min_time_add = 300, int min_end_time = 59, double black_level=0.05, bool addStartEnd = true)
         {
             TimeSpan vid_dur = getVideoDuration(file);
 
@@ -1020,6 +1016,8 @@ namespace ConsoleApplication1
             }
             StreamReader reader = proc.StandardError;
             List<TimeSpan> nums = new List<TimeSpan>();
+            if(addStartEnd) nums.Add(TimeSpan.FromSeconds(0));
+            
             string line;
             AddLog("Scanning for Commercial Breaks...");
             DateTime now = DateTime.Now;
@@ -1098,6 +1096,7 @@ namespace ConsoleApplication1
 
             }
             //
+            if (addStartEnd) nums.Add(TimeSpan.FromSeconds(vid_dur.TotalSeconds));
             return nums;
 
             //return commerical_breaks;
@@ -1106,7 +1105,7 @@ namespace ConsoleApplication1
         static List<TimeSpan> scanForCommercialBreaks(string file, double threshhold, double wait, int min_time_add = 300)
         {
             Process proc = new Process();
-            proc.StartInfo.FileName = ffmpeg_location;
+            proc.StartInfo.FileName = ffmpegX_location;
 
             string fname_noext = Path.GetFileNameWithoutExtension(file);
             string fname_root = Path.GetDirectoryName(file);
@@ -1347,6 +1346,9 @@ namespace ConsoleApplication1
                 case 'n':
                     Console.WriteLine(@"Remove Normaliztion mark from filename");
                     break;
+                case 'l':
+                    Console.WriteLine(@"Replace underscore with space in filename");
+                    break;
                 case 'm':
                     Console.WriteLine(@"Add Normaliztion mark to filename");
                     break;
@@ -1372,13 +1374,13 @@ namespace ConsoleApplication1
                     Console.WriteLine("█                                                            █");
                     Console.WriteLine("█ Options:                                                   █");
                     Console.WriteLine("█                                                            █");
-                    Console.WriteLine("█   [ 1 ] - Batch Normalize Audio    [ n ] Remove NA Mark    █");
-                    Console.WriteLine("█   [ 2 ] - Print Breaks             [ u ] Remove Non-Ascii  █");
-                    Console.WriteLine("█   [ 3 ] - Split Video                                      █");
+                    Console.WriteLine("█   [ 1 ] - Batch Normalize Audio   [ n ] Remove NA Mark     █");
+                    Console.WriteLine("█   [ 2 ] - Print Breaks            [ u ] Remove Non-Ascii   █");
+                    Console.WriteLine("█   [ 3 ] - Split Video             [ l ] Replace Underscore █");
                     Console.WriteLine("█   [ 4 ] - Generate Breaks                                  █");
                     Console.WriteLine("█   [ 5 ] - Autocrop                                         █");
                     Console.WriteLine("█   [ 6 ] - Test Print Breaks                                █");
-                    Console.WriteLine("█   [ 7 ] - Time Adder               [ t ] Remove Time       █");
+                    Console.WriteLine("█   [ 7 ] - Time Adder              [ t ] Remove Time        █");
                     Console.WriteLine("█                                                            █");
                     Console.WriteLine("█   [ 9 ] - Options                                          █");
                     Console.WriteLine("█                                                            █");
@@ -1727,7 +1729,7 @@ namespace ConsoleApplication1
                                 if (!File.Exists(spb_output))
                                 {
                                     //List<TimeSpan> cms = scanForCommercialBreaks(print_breaks[0], 0.5, iwait);
-                                    List<TimeSpan> cms = NEWscanForCommercialBreaks(print_breaks[0], iathresh, iwait, iblength, iend, iblack);
+                                    List<TimeSpan> cms = NEWscanForCommercialBreaks(print_breaks[0], iathresh, iwait, iblength, iend, iblack, false);
                                     Console.Write(cms.Count.ToString());
                                     //Console.ReadKey();
                                     string spb = "";
@@ -2288,6 +2290,60 @@ namespace ConsoleApplication1
                             rna_files.RemoveAt(0);
                         }
                         Console.WriteLine("Normalization MARK (_NA_) has been removed. Press and key to continue...");
+
+                        Console.ReadKey();
+                        break;
+                    case 'l':
+                        //add video length to filename
+
+                        drawScreen('l'); //timeadder
+
+                        Console.WriteLine("Enter path to files:");
+                        string rla_folder = Console.ReadLine();
+
+                        if (rla_folder == "") break;
+                        if (Directory.Exists(rla_folder) == false)
+                        {
+                            drawMessage("Path does not exist: " + rla_folder);
+                            break;
+                        }
+
+                        List<string> rla_files = GetFiles(rla_folder);
+
+                        while (rla_files.Count > 0)
+                        {
+
+                            string file = rla_files[0];
+                            if (File.Exists(file))
+                            {
+                                string path = Path.GetDirectoryName(file);
+                                string file_name = Path.GetFileNameWithoutExtension(file);
+                                file_name = file_name.Replace("_NA_", "|||||");
+                                if (file_name.IndexOf('_') > -1)
+                                {
+                                    file_name = file_name.Replace("_", " ");
+                                    file_name = file_name.Replace("|||||", "_NA_");
+                                    string ext_name = Path.GetExtension(file);
+
+                                    Console.WriteLine();
+
+                                    File.SetAttributes(file, FileAttributes.Normal);
+                                    try
+                                    {
+                                        File.Move(file, path + "\\" + file_name + ext_name);
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        Console.WriteLine(e.ToString());
+                                    }
+                                    Console.WriteLine(file + " ==> " + path + "\\" + file_name + ext_name);
+                                    Console.WriteLine("Done!");
+                                }
+                            }
+
+                            rla_files.RemoveAt(0);
+                        }
+                        Console.WriteLine("Underscore has been replaced. Press and key to continue...");
 
                         Console.ReadKey();
                         break;
