@@ -12,7 +12,7 @@ namespace ConsoleApplication1
     class Program
     {
 
-        static string[] video_file_extensions = new string[] { ".3g2", ".3gp", ".asf", ".avi", ".flv", ".h264", ".m2t", ".m2ts", ".m4a", ".m4v", ".mkv", ".mod", ".mov", ".mp3", ".mp4", ".mpg", ".png", ".tod", ".ts", ".vob", ".webm", ".wmv" };
+        static string[] video_file_extensions = new string[] { ".3g2", ".3gp", ".asf", ".avi", ".flv", ".h264", ".m2t", ".m2ts", ".m4a", ".m4v", ".mkv", ".mod", ".mov", ".mp3", ".ogg", "wav", ".mp4", ".mpg", ".png", ".tod", ".ts", ".vob", ".webm", ".wmv" };
 
         static List<string> GetFiles(string folder, string[] ext_filter = null, string[] name_filter = null)
         {
@@ -58,33 +58,42 @@ namespace ConsoleApplication1
         static string ffmpegX_location = "";
         static string temp_folder = "";
 
-        static TimeSpan[] NormalizeAudio(string file)
-        {
+        static bool Normalizing = false;
 
+        static TimeSpan[] NormalizeAudio(string file, bool Verbose = false)
+        {
+            Normalizing = true;
+            if (Verbose) Console.WriteLine("Normalizing has begun!");
             TimeSpan[] ret = { TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(0) };
 
             string pad = "_NA_";
             string path = Path.GetDirectoryName(file);
             string file_name = Path.GetFileNameWithoutExtension(file);
             string ext_name = Path.GetExtension(file);
-
+            if (Verbose) Console.WriteLine("Checking if file exists " + path + "\\" + file_name + pad + "" + ext_name);
             if (File.Exists(path + "\\" + file_name + pad + "" + ext_name) || file.IndexOf(pad) >= 0)
             {
+                if (Verbose) Console.WriteLine("File exists skipping");
                 AddLog("File Exists, skipping normaliztion");
                 return ret;
             }
 
+            if (Verbose) Console.WriteLine("Starting new process");
             Process proc = new Process();
             proc.StartInfo.FileName = ffmpegX_location;
-
+            if (Verbose) Console.WriteLine("Setting file location");
             proc.StartInfo.Arguments = "-y -i \"" + file + "\" -af loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json -f null /dev/null";
+            if (Verbose) Console.WriteLine("Assigning Arguments");
             proc.StartInfo.RedirectStandardError = true;
+            proc.StartInfo.CreateNoWindow = false;
             proc.StartInfo.UseShellExecute = false;
 
+            if (Verbose) Console.WriteLine("Starting process");
             if (!proc.Start())
             {
                 Console.WriteLine("Error starting");
             }
+            if (Verbose) Console.WriteLine("Process started");
             StreamReader reader = proc.StandardError;
             string line;
             string input_i = "";
@@ -94,11 +103,11 @@ namespace ConsoleApplication1
             string input_offset = "";
 
             Console.WriteLine("Generating Filter...");
-            Console.CursorVisible = false;
+            if(!Verbose) Console.CursorVisible = false;
 
             TimeSpan procTDur = new TimeSpan();
             DateTime start = DateTime.Now;
-
+            if (Verbose) Console.WriteLine("Begining to read lines");
             while ((line = reader.ReadLine()) != null)
             {
                 string dur = "";
@@ -344,7 +353,8 @@ namespace ConsoleApplication1
 
             Console.WriteLine();
             proc.Close();
-            Console.CursorVisible = true;
+            if (!Verbose) Console.CursorVisible = true;
+            Normalizing = false;
             return ret;
 
         }
@@ -513,6 +523,7 @@ namespace ConsoleApplication1
                             AddLog("Autodetected commercial. Splitting video #" + i.ToString());
                             TimeSpan length = breaks[i] - breaks[i - 1];
                             proc.StartInfo.Arguments = "-ss " + breaks[i - 1].Hours.ToString().PadLeft(2, '0') + ":" + breaks[i - 1].Minutes.ToString().PadLeft(2, '0') + ":" + breaks[i - 1].Seconds.ToString().PadLeft(2, '0') + "." + breaks[i - 1].Milliseconds + " -i " + "\"" + file + "\" -c:v libx264 -r 29.97 -preset slow -b:v 800 -crf 29.97 -vf \"scale=640:480,setdar=4:3\" -t " + length.Hours.ToString().PadLeft(2, '0') + ":" + length.Minutes.ToString().PadLeft(2, '0') + ":" + length.Seconds.ToString().PadLeft(2, '0') + "." + length.Milliseconds + " \"" + output_folder + Path.GetFileNameWithoutExtension(file) + "_" + i.ToString() + "_" + rnd.Next(1, 999).ToString() + ".mp4\"";
+                            //proc.StartInfo.Arguments = "-ss " + breaks[i - 1].Hours.ToString().PadLeft(2, '0') + ":" + breaks[i - 1].Minutes.ToString().PadLeft(2, '0') + ":" + breaks[i - 1].Seconds.ToString().PadLeft(2, '0') + "." + breaks[i - 1].Milliseconds + " -i " + "\"" + file + "\" -c:v copy -c:a copy -t " + length.Hours.ToString().PadLeft(2, '0') + ":" + length.Minutes.ToString().PadLeft(2, '0') + ":" + length.Seconds.ToString().PadLeft(2, '0') + "." + length.Milliseconds + " \"" + output_folder + Path.GetFileNameWithoutExtension(file) + "_" + i.ToString() + "_" + rnd.Next(1, 999).ToString() + ".mp4\"";
                             Console.WriteLine(proc.StartInfo.Arguments);
 
                             AddLog("Split command:" + proc.StartInfo.Arguments.ToString());
@@ -1060,13 +1071,13 @@ namespace ConsoleApplication1
                         {
                             nums.Add(TimeSpan.FromSeconds(bmed));
                             last_break = bmed;
-                            Console.Write("+");
+                            Console.Write("+" + TimeSpan.FromSeconds(bmed).ToString());
                         }
                         else if (nums.Count == 0) //we should add first break regardless of minimun time difference 
                         {
                             nums.Add(TimeSpan.FromSeconds(bmed));
                             last_break = bmed;
-                            Console.Write("+");
+                            Console.Write("+" + TimeSpan.FromSeconds(bmed).ToString());
                         }
                         else
                         {
@@ -1488,9 +1499,58 @@ namespace ConsoleApplication1
             }
             ResetLog();
 
+            bool premature_exit = false;
+            try
+            {
+                
+                for (int i = 0; i < args.Count(); i++)
+                {
+                    string s = args[i];
+                    if (s == "--normalize" || s == "-n") //normalize
+                    {
+                        //Console.Clear();
+                        string f = args[i + 1];
+
+                        if (File.Exists(f))
+                        {
+                            if (f.IndexOf("_NA_") > -1)
+                            {
+                                Console.WriteLine(f + " has already been normalized");
+                            }
+                            else
+                            {
+                                Console.WriteLine("Normalizing file: " + f);
+                                premature_exit = true;
+                                NormalizeAudio(f, true);
+                                while(Normalizing)
+                                {
+                                    Application.DoEvents();
+                                    Console.WriteLine("Normalizing...");
+                                    System.Threading.Thread.Sleep(5000);
+
+                                }
+                                Console.WriteLine("Normaliztion ended");
+                            }
+                            i++;
+
+                        }
+                        else
+                        {
+
+                            Console.WriteLine(f + " doesn't exist");
+                            System.Threading.Thread.Sleep(2000);
+                            premature_exit = true;
+                        }
+                    }
+                }
+            }
+            catch(Exception exc)
+            {
+                Console.WriteLine(exc.ToString());
+                return;
+            }
+            if (premature_exit) return;
             System.Threading.Thread.Sleep(2000);
-
-
             /*
             string folder = Path.GetDirectoryName(ffmpeg_location);
 
@@ -1646,6 +1706,7 @@ namespace ConsoleApplication1
                                 if (athresh != "") iathresh = Double.Parse(athresh);
                             }
                             catch { }
+                            Console.WriteLine("Threshold set to " + iathresh.ToString() + " sec(s)");
 
                             Console.WriteLine("");
                             Console.WriteLine("");
@@ -1658,7 +1719,20 @@ namespace ConsoleApplication1
                             }
                             catch { }
 
-                            Console.WriteLine("Threshold set to " + iathresh.ToString() + " sec(s)");
+                            Console.WriteLine("Black value set to " + iblack.ToString() + " sec(s)");
+
+                            Console.WriteLine("");
+                            Console.WriteLine("");
+                            Console.WriteLine("Enter minimum amount of commercials (default is 3):");
+                            string amincomm = Console.ReadLine();
+                            double imincomm = 3;
+                            try
+                            {
+                                if (amincomm != "") imincomm = Double.Parse(amincomm);
+                            }
+                            catch { }
+
+                            Console.WriteLine("Minimum commercials set to " + imincomm.ToString() + "");
 
                             Console.WriteLine("");
                             Console.WriteLine("");
@@ -1708,7 +1782,8 @@ namespace ConsoleApplication1
 
 
                             bool print_anyway = false;
-                            if(Console.ReadLine().Trim().ToLower() == "yes" || Console.ReadLine().Trim().ToLower() == "y")
+                            string breaksmakeup = Console.ReadLine().Trim().ToLower();
+                            if (breaksmakeup.Substring(0,1) == "y")
                             {
                                 print_anyway = true;
                             }
@@ -1730,62 +1805,64 @@ namespace ConsoleApplication1
                                 {
                                     //List<TimeSpan> cms = scanForCommercialBreaks(print_breaks[0], 0.5, iwait);
                                     List<TimeSpan> cms = NEWscanForCommercialBreaks(print_breaks[0], iathresh, iwait, iblength, iend, iblack, false);
-                                    Console.Write(cms.Count.ToString());
-                                    //Console.ReadKey();
-                                    string spb = "";
-                                    foreach (TimeSpan t in cms)
+                                    if (cms.Count >= imincomm)
                                     {
-                                        AddLog("Found commercial at (in seconds): " + Math.Floor(t.TotalSeconds).ToString());
-                                        //AddLog("Found commercial at (in seconds): " + (t.TotalSeconds).ToString());
-                                        //spb += Math.Floor(t.TotalSeconds).ToString() + "\n";
-                                        spb += t.TotalSeconds.ToString() + "\n";
+                                        Console.Write(cms.Count.ToString());
+                                        //Console.ReadKey();
+                                        string spb = "";
+                                        foreach (TimeSpan t in cms)
+                                        {
+                                            AddLog("Found commercial at (in seconds): " + Math.Floor(t.TotalSeconds).ToString());
+                                            //AddLog("Found commercial at (in seconds): " + (t.TotalSeconds).ToString());
+                                            //spb += Math.Floor(t.TotalSeconds).ToString() + "\n";
+                                            spb += t.TotalSeconds.ToString() + "\n";
 
-                                        //spb += (t.TotalSeconds).ToString() + "\n";
+                                            //spb += (t.TotalSeconds).ToString() + "\n";
 
-                                    }
-                                    if (spb != "")
-                                    {
-                                        File.WriteAllText(spb_output, spb.Substring(0, spb.Length - 1));
-                                        AddLog("Prnted breaks: " + spb_output);
+                                        }
+                                        if (spb != "")
+                                        {
+                                            File.WriteAllText(spb_output, spb.Substring(0, spb.Length - 1));
+                                            AddLog("Prnted breaks: " + spb_output);
+                                        }
                                     }
                                     else
                                     {
-                                        AddLog("No breaks found");
-                                        if (print_anyway)
+                                        Console.WriteLine("Only found " + (cms.Count).ToString() + " which is less than minimum required of " + amincomm + ". Skipping");
+                                    }
+                                    if (print_anyway)
+                                    {
+                                        Console.WriteLine("");
+                                        Console.WriteLine("No breaks found, making some up!");
+                                        Console.WriteLine("Getting length of video to use as a reference");
+                                        string[] atime = getDurationAndAudioFilter(print_breaks[0]);
+                                        Debug.WriteLine(atime[0]);
+                                        if (atime[0] != "")
                                         {
-                                            Console.WriteLine("");
-                                            Console.WriteLine("No breaks found, making some up!");
-                                            Console.WriteLine("Getting length of video to use as a reference");
-                                            string[] atime = getDurationAndAudioFilter(print_breaks[0]);
-                                            Debug.WriteLine(atime[0]);
-                                            if (atime[0] != "")
+                                            double ilength = (double)TimeSpan.Parse(atime[0]).TotalSeconds;
+                                            if (ilength >= 0)
                                             {
-                                                double ilength = (double)TimeSpan.Parse(atime[0]).TotalSeconds;
-                                                if (ilength >= 0)
+                                                Console.WriteLine("Found length: " + atime[0].ToString());
+                                                int ibreaks = (int)Math.Floor(ilength / 600);
+                                                string sbreaks = "";
+                                                for (int i = 1; i <= ibreaks; i++)
                                                 {
-                                                    Console.WriteLine("Found length: " + atime[0].ToString());
-                                                    int ibreaks = (int)Math.Floor(ilength / 600);
-                                                    string sbreaks = "";
-                                                    for (int i = 1; i <= ibreaks; i++)
-                                                    {
-                                                        if ((600 * i) < ilength) sbreaks += (600 * i).ToString() + "\n";
-                                                    }
-                                                    Console.WriteLine(sbreaks);
-                                                    if (sbreaks != "")
-                                                    {
-                                                        File.WriteAllText(spb_output, sbreaks.Substring(0, sbreaks.Length - 1));
-                                                    }
+                                                    if ((600 * i) < ilength) sbreaks += (600 * i).ToString() + "\n";
+                                                }
+                                                Console.WriteLine(sbreaks);
+                                                if (sbreaks != "")
+                                                {
+                                                    File.WriteAllText(spb_output, sbreaks.Substring(0, sbreaks.Length - 1));
                                                 }
                                             }
-
                                         }
-                                    }
 
+                                    }
                                 }
                                 else
                                 {
                                     AddLog("Commercials Already exist for this show.");
-                                    Console.WriteLine("Commercials Already exist for this show.");
+                                    //Console.Write("Commercials Already exist for this show.");
                                 }
                                 print_breaks.RemoveAt(0);
                             }
