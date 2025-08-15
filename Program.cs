@@ -521,8 +521,23 @@ namespace ConsoleApplication1
                         for (int i = 1; i <= times; i++)
                         {
                             AddLog("Autodetected commercial. Splitting video #" + i.ToString());
-                            TimeSpan length = breaks[i] - breaks[i - 1];
-                            proc.StartInfo.Arguments = "-ss " + breaks[i - 1].Hours.ToString().PadLeft(2, '0') + ":" + breaks[i - 1].Minutes.ToString().PadLeft(2, '0') + ":" + breaks[i - 1].Seconds.ToString().PadLeft(2, '0') + "." + breaks[i - 1].Milliseconds + " -i " + "\"" + file + "\" -c:v libx264 -r 29.97 -preset slow -b:v 800 -crf 29.97 -vf \"scale=640:480,setdar=4:3\" -t " + length.Hours.ToString().PadLeft(2, '0') + ":" + length.Minutes.ToString().PadLeft(2, '0') + ":" + length.Seconds.ToString().PadLeft(2, '0') + "." + length.Milliseconds + " \"" + output_folder + Path.GetFileNameWithoutExtension(file) + "_" + i.ToString() + "_" + rnd.Next(1, 999).ToString() + ".mp4\"";
+                            
+                            //TimeSpan length = breaks[i] - breaks[i - 1] - TimeSpan.ParseExact("00:00:00.500", @"hh\:mm\:ss\.fff", null);
+                            TimeSpan start = breaks[i - 1];
+                            string startStr = $"{start.Hours:D2}:{start.Minutes:D2}:{start.Seconds:D2}.{start.Milliseconds:D3}";
+
+                            string inputPath = $"\"{file}\"";
+
+                            TimeSpan length = breaks[i] - breaks[i - 1] - TimeSpan.FromMilliseconds(333);
+                            string lengthStr = $"{length.Hours:D2}:{length.Minutes:D2}:{length.Seconds:D2}.{length.Milliseconds:D3}";
+
+                            string outputName = $"{Path.GetFileNameWithoutExtension(file)}_{i:D3}_{rnd.Next(1, 999):D3}.mp4";
+                            string outputPath = $"\"{Path.Combine(output_folder, outputName)}\"";
+
+                            proc.StartInfo.Arguments = $"-ss {startStr} -i {inputPath} -c:v libx264 -r 29.97 -preset slow -b:v 800 -crf 29.97 -vf \"scale=640:480\" -t {lengthStr} {outputPath}";
+                            //proc.StartInfo.Arguments = "-ss " + breaks[i - 1].Hours.ToString().PadLeft(2, '0') + ":" + breaks[i - 1].Minutes.ToString().PadLeft(2, '0') + ":" + breaks[i - 1].Seconds.ToString().PadLeft(2, '0') + "." + breaks[i - 1].Milliseconds + " -i " + "\"" + file + "\" -c:v libx264 -r 29.97 -preset slow -b:v 800 -crf 29.97 -vf \"scale=640:480\" -t " + length.Hours.ToString().PadLeft(2, '0') + ":" + length.Minutes.ToString().PadLeft(2, '0') + ":" + length.Seconds.ToString().PadLeft(2, '0') + "." + length.Milliseconds + " \"" + output_folder + Path.GetFileNameWithoutExtension(file) + "_" + i.ToString("D3") + "_" + rnd.Next(1, 999).ToString("D3") + ".mp4\"";
+
+
                             //proc.StartInfo.Arguments = "-ss " + breaks[i - 1].Hours.ToString().PadLeft(2, '0') + ":" + breaks[i - 1].Minutes.ToString().PadLeft(2, '0') + ":" + breaks[i - 1].Seconds.ToString().PadLeft(2, '0') + "." + breaks[i - 1].Milliseconds + " -i " + "\"" + file + "\" -c:v copy -c:a copy -t " + length.Hours.ToString().PadLeft(2, '0') + ":" + length.Minutes.ToString().PadLeft(2, '0') + ":" + length.Seconds.ToString().PadLeft(2, '0') + "." + length.Milliseconds + " \"" + output_folder + Path.GetFileNameWithoutExtension(file) + "_" + i.ToString() + "_" + rnd.Next(1, 999).ToString() + ".mp4\"";
                             Console.WriteLine(proc.StartInfo.Arguments);
 
@@ -1003,6 +1018,28 @@ namespace ConsoleApplication1
             return new TimeSpan();
         }
 
+        static void MoveTaggedFiles(string dir)
+        {
+            var tags = new Dictionary<string, string> { { "%AM%", "am" }, { "%PM%", "pm" }, { "%ANY%", "any" } };
+            Console.WriteLine("Searcing for tagged files in " + dir);
+            foreach (var file in Directory.GetFiles(dir))
+            {
+                var name = Path.GetFileName(file);
+
+                foreach (var tag in tags.Keys)
+                {
+                    if (name.IndexOf(tag, StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        
+                        var sub = Path.Combine(dir, tags[tag]);
+                        Directory.CreateDirectory(sub);
+                        Console.WriteLine("Moving file " + file + " to " + Path.Combine(sub, name));
+                        File.Move(file, Path.Combine(sub, name));
+                        break;
+                    }
+                }
+            }
+        }
         static List<TimeSpan> NEWscanForCommercialBreaks(string file, double threshhold, double wait, int min_time_add = 300, int min_end_time = 59, double black_level=0.05, bool addStartEnd = true)
         {
             TimeSpan vid_dur = getVideoDuration(file);
@@ -1060,7 +1097,7 @@ namespace ConsoleApplication1
                     b = line.Length;
                     double bdur = Convert.ToDouble(line.Substring(a + 15, b - a - 15));
 
-                    double bmed = ((bstart + bend) / 2);
+                    double bmed = bstart + (bdur / 2);
 
                     //AddLog(bmed + " - " + wait);
                     //commercial breaks must start after the minimum wait time and be less than video length minus minimum end time
@@ -1262,9 +1299,15 @@ namespace ConsoleApplication1
 
         static void ResetLog()
         {
-            if (Log_File == "") return;
-            if (File.Exists(Log_File) == false) File.Create(Log_File + "\\log.txt").Close();
-            File.WriteAllText(Log_File + "\\log.txt", string.Empty);
+            try
+            {
+                if (Log_File == "") return;
+                if (File.Exists(Log_File) == false) File.Create(Log_File + "\\log.txt").Close();
+                File.WriteAllText(Log_File + "\\log.txt", string.Empty);
+            } catch(Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
         }
 
         static void AddLog(string log)
@@ -1316,12 +1359,10 @@ namespace ConsoleApplication1
                     Console.WriteLine(@" `------'  `----'`--''--'`------'`--'    `----' `--`--'`--'`--'`----'  ");
                     break;
                 case 5:
-                    Console.WriteLine(@"     _         _                             ");
-                    Console.WriteLine(@"    / \  _   _| |_ ___   ___ _ __ ___  _ __  ");
-                    Console.WriteLine(@"   / _ \| | | | __/ _ \ / __| '__/ _ \| '_ \ ");
-                    Console.WriteLine(@"  / ___ \ |_| | || (_) | (__| | | (_) | |_) |");
-                    Console.WriteLine(@" /_/   \_\__,_|\__\___/ \___|_|  \___/| .__/ ");
-                    Console.WriteLine(@"                                      |_|    ");
+                    Console.WriteLine(@" __  __  _____  _  _  ____    ____   __    ___   ___  ____  ____     ____  ____  __    ____  ___ ");
+                    Console.WriteLine(@"(  \/  )(  _  )( \/ )( ___)  (_  _) /__\  / __) / __)( ___)(  _ \   ( ___)(_  _)(  )  ( ___)/ __)");
+                    Console.WriteLine(@" )    (  )(_)(  \  /  )__)     )(  /(__)\( (_-.( (_-. )__)  )(_) )   )__)  _)(_  )(__  )__) \__ \");
+                    Console.WriteLine(@"(_/\/\_)(_____)  \/  (____)   (__)(__)(__)\___/ \___/(____)(____/   (__)  (____)(____)(____)(___/");
                     break;
                 case 6:
                     Console.Clear();
@@ -1358,7 +1399,10 @@ namespace ConsoleApplication1
                     Console.WriteLine(@"Remove Normaliztion mark from filename");
                     break;
                 case 'l':
-                    Console.WriteLine(@"Replace underscore with space in filename");
+                    Console.WriteLine(@"Replace string with string in filename");
+                    break;
+                case 'k':
+                    Console.WriteLine(@"Add string to end of filename");
                     break;
                 case 'm':
                     Console.WriteLine(@"Add Normaliztion mark to filename");
@@ -1370,9 +1414,8 @@ namespace ConsoleApplication1
                     Console.WriteLine(@"Clean Ascii filenames");
                     break;
                 default:
-                    System.Reflection.Assembly executingAssembly = System.Reflection.Assembly.GetExecutingAssembly();
-                    var fieVersionInfo = FileVersionInfo.GetVersionInfo(executingAssembly.Location);
-                    var version = fieVersionInfo.FileVersion;
+                    
+                    var version = "0.4.3";
                     Console.WriteLine(@"____   ____.__    .___            _________      .__  .__  __   ");
                     Console.WriteLine(@"\   \ /   /|__| __| _/____  ____ /   _____/_____ |  | |__|/  |_ ");
                     Console.WriteLine(@" \   Y   / |  |/ __ |/ __ \/  _ \\_____  \\____ \|  | |  \   __\");
@@ -1387,10 +1430,10 @@ namespace ConsoleApplication1
                     Console.WriteLine("█                                                            █");
                     Console.WriteLine("█   [ 1 ] - Batch Normalize Audio   [ n ] Remove NA Mark     █");
                     Console.WriteLine("█   [ 2 ] - Print Breaks            [ u ] Remove Non-Ascii   █");
-                    Console.WriteLine("█   [ 3 ] - Split Video             [ l ] Replace Underscore █");
+                    Console.WriteLine("█   [ 3 ] - Split Video             [ l ] Replace String     █");
                     Console.WriteLine("█   [ 4 ] - Generate Breaks                                  █");
-                    Console.WriteLine("█   [ 5 ] - Autocrop                                         █");
-                    Console.WriteLine("█   [ 6 ] - Test Print Breaks                                █");
+                    Console.WriteLine("█   [ 5 ] - Move Tagged Files                                █");
+                    Console.WriteLine("█   [ 6 ] - Test Print Breaks       [ k ] Add to Filename    █");
                     Console.WriteLine("█   [ 7 ] - Time Adder              [ t ] Remove Time        █");
                     Console.WriteLine("█                                                            █");
                     Console.WriteLine("█   [ 9 ] - Options                                          █");
@@ -1967,178 +2010,7 @@ namespace ConsoleApplication1
                         Console.WriteLine();
                         Console.WriteLine();
 
-                        Console.WriteLine("Enter black level 1-255 (default is 10):");
-                        string str_result = Console.ReadLine();
-                        int black_level = 10;
-
-                        if (IsNumeric(str_result) && str_result != "") black_level = int.Parse(str_result);
-
-                        Console.WriteLine();
-                        Console.WriteLine();
-
-                        List<string> bbars_files = GetFiles(bbars_folder, video_file_extensions);
-
-                        while (bbars_files.Count > 0)
-                        {
-                            Console.WriteLine("Autocropping: " + bbars_files[0]);
-
-
-                            //Console.ReadKey();
-
-                            string spb_output = bbars_folder + "\\" + Path.GetFileNameWithoutExtension(bbars_files[0]) + "_cropped" + Path.GetExtension(bbars_files[0]);
-
-                            if (!File.Exists(spb_output))
-                            {
-                                Console.WriteLine("New file will be: " + spb_output);
-                                //Console.ReadKey();
-
-                                string[] res = getDurationAndAudioFilter(bbars_files[0]);
-                                int dur = (int)TimeSpan.Parse(res[0]).TotalSeconds;
-                                Random rnd = new Random();
-                                Bitmap b = (Bitmap)Image.FromFile(getScreenShot(bbars_files[0], rnd.Next(5, dur).ToString()));
-                                //Bitmap b = (Bitmap)Image.FromFile(getScreenShot(bbars_files[0], (dur/2).ToString()));
-
-                                int left = 0;
-                                int top = 0;
-                                int width = b.Width;
-                                int height = b.Height;
-
-
-                                int maxWidth = b.Width;
-                                int maxHeight = b.Height;
-
-                                Console.WriteLine("");
-                                Console.WriteLine("Screen size: " + b.Width.ToString() + "x" + b.Height.ToString());
-                                Console.ReadKey();
-
-                                int non_black = -1;
-
-                                for (int x = 0; x < b.Width; x++)
-                                {
-                                    Color c1 = b.GetPixel(x, 10);
-                                    Color c2 = b.GetPixel(x, b.Height - 10);
-                                    if (c1.R < black_level && c1.G < black_level && c1.B < black_level && c2.R < black_level && c2.G < black_level && c2.B < black_level)
-                                    {
-                                        //AddLog(c.ToString());
-                                    }
-                                    else
-                                    {
-                                        non_black++;
-                                    }
-
-                                    if (non_black > 4)
-                                    {
-                                        left = x - non_black;
-                                        break;
-                                    }
-                                }
-
-                                non_black = -1;
-                                for (int x = b.Width - 1; x > -1; x--)
-                                {
-                                    Color c1 = b.GetPixel(x, 10);
-                                    Color c2 = b.GetPixel(x, b.Height - 10);
-                                    if (c1.R < black_level && c1.G < black_level && c1.B < black_level && c2.R < black_level && c2.G < black_level && c2.B < black_level)
-                                    {
-                                        //AddLog(c.ToString());
-                                    }
-                                    else
-                                    {
-                                        non_black++;
-                                    }
-
-                                    if (non_black > 4)
-                                    {
-                                        width = (x + non_black) - left;
-                                        break;
-                                    }
-                                }
-
-                                non_black = -1;
-                                for (int x = 0; x < b.Height; x++)
-                                {
-                                    Color c1 = b.GetPixel(10, x);
-                                    Color c2 = b.GetPixel(b.Width - 10, x);
-                                    if (c1.R < black_level && c1.G < black_level && c1.B < black_level && c2.R < black_level && c2.G < black_level && c2.B < black_level)
-                                    {
-                                        //AddLog(c.ToString());
-                                    }
-                                    else
-                                    {
-                                        non_black++;
-                                    }
-
-                                    if (non_black > 4)
-                                    {
-                                        top = x - non_black;
-                                        break;
-                                    }
-                                }
-
-                                non_black = -1;
-                                for (int x = b.Height - 1; x > -1; x--)
-                                {
-                                    Color c1 = b.GetPixel(10, x);
-                                    Color c2 = b.GetPixel(b.Width - 10, x);
-                                    if (c1.R < black_level && c1.G < black_level && c1.B < black_level && c2.R < black_level && c2.G < black_level && c2.B < black_level)
-                                    {
-                                        //AddLog(c.ToString());
-                                    }
-                                    else
-                                    {
-                                        non_black++;
-                                    }
-
-                                    if (non_black > 4)
-                                    {
-                                        height = (x + non_black) - top;
-                                        break;
-                                    }
-                                }
-
-                                if (left + width > maxWidth) width = maxWidth - left;
-                                if (top + height > maxHeight) height = maxHeight - top;
-
-
-
-
-                                string command = "-i \"" + bbars_files[0] + "\" -filter:v \"crop = " + width + ":" + height + ":" + left + ":" + top + "\" -c:a copy -strict -2 \"" + spb_output + "\"";
-                                Console.WriteLine(command);
-                                Console.ReadKey();
-
-                                Process proc = new Process();
-                                proc.StartInfo.FileName = ffmpegX_location;
-
-                                proc.StartInfo.Arguments = command;
-                                proc.StartInfo.RedirectStandardError = true;
-                                proc.StartInfo.UseShellExecute = false;
-
-                                if (!proc.Start())
-                                {
-                                    Console.WriteLine("Error starting");
-                                }
-
-                                StreamReader reader = proc.StandardError;
-                                string line;
-                                Console.WriteLine("Removing black bars...");
-                                Console.CursorVisible = false;
-
-                                DateTime start = DateTime.Now;
-
-                                while ((line = reader.ReadLine()) != null)
-                                {
-                                    Console.WriteLine(line);
-                                }
-                                proc.Close();
-
-                            }
-                            else
-                            {
-                                AddLog("Cropped files already exist for this file.");
-                                Console.WriteLine("Cropped files already exist for this file.");
-                            }
-                            bbars_files.RemoveAt(0);
-                        }
+                        MoveTaggedFiles(bbars_folder);
 
                         break;
                     case '6': //print breaks test
@@ -2370,6 +2242,98 @@ namespace ConsoleApplication1
 
                         Console.ReadKey();
                         break;
+                    case 'k':
+                        //add video length to filename
+
+                        drawScreen('k'); //timeadder
+
+                        Console.WriteLine("Enter path to files:");
+                        string kla_folder = Console.ReadLine();
+
+                        if (kla_folder == "") break;
+                        if (Directory.Exists(kla_folder) == false)
+                        {
+                            drawMessage("Path does not exist: " + kla_folder);
+                            break;
+                        }
+
+                        List<string> kla_files = GetFiles(kla_folder);
+
+                        Console.WriteLine("Enter string to append to file:");
+                        string kda_string = Console.ReadLine();
+                        if (kda_string != "")
+                        {
+
+                            while (kla_files.Count > 0)
+                            {
+
+                                string file = kla_files[0];
+                                if (File.Exists(file) && file.IndexOf(kda_string) < 0)
+                                {
+                                    string path = Path.GetDirectoryName(file);
+                                    string file_name = Path.GetFileNameWithoutExtension(file);
+                                    string ext_name = Path.GetExtension(file);
+
+                                    Console.WriteLine();
+
+                                    File.SetAttributes(file, FileAttributes.Normal);
+                                    try
+                                    {
+                                        File.Move(file, path + "\\" + file_name + kda_string + ext_name);
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        Console.WriteLine(e.ToString());
+                                    }
+                                    Console.WriteLine(file + " ==> " + path + "\\" + file_name + kda_string + ext_name);
+                                    Console.WriteLine("Done!");
+                                }
+
+                                kla_files.RemoveAt(0);
+                            }
+                            Console.WriteLine(kda_string + " has been added. Press and key to continue...");
+
+                            Console.ReadKey();
+                        }
+
+                        Console.WriteLine("Enter string to prepend to file:");
+                        kda_string = Console.ReadLine();
+                        if (kda_string != "")
+                        {
+
+                            while (kla_files.Count > 0)
+                            {
+
+                                string file = kla_files[0];
+                                if (File.Exists(file) && file.IndexOf(kda_string) < 0)
+                                {
+                                    string path = Path.GetDirectoryName(file);
+                                    string file_name = Path.GetFileNameWithoutExtension(file);
+                                    string ext_name = Path.GetExtension(file);
+
+                                    Console.WriteLine();
+
+                                    File.SetAttributes(file, FileAttributes.Normal);
+                                    try
+                                    {
+                                        File.Move(file, path + "\\" + kda_string + file_name  + ext_name);
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        Console.WriteLine(e.ToString());
+                                    }
+                                    Console.WriteLine(file + " ==> " + path + "\\" + kda_string + file_name + ext_name);
+                                    Console.WriteLine("Done!");
+                                }
+
+                                kla_files.RemoveAt(0);
+                            }
+                            Console.WriteLine(kda_string + " has been added. Press and key to continue...");
+
+                            Console.ReadKey();
+                        }
+
+                        break;
                     case 'l':
                         //add video length to filename
 
@@ -2387,6 +2351,14 @@ namespace ConsoleApplication1
 
                         List<string> rla_files = GetFiles(rla_folder);
 
+                        Console.WriteLine("Enter string to find:");
+                        string da_string = Console.ReadLine();
+                        if (da_string == "") break;
+
+                        Console.WriteLine("Enter string to replace:");
+                        string rep_string = Console.ReadLine();
+                        
+
                         while (rla_files.Count > 0)
                         {
 
@@ -2396,9 +2368,10 @@ namespace ConsoleApplication1
                                 string path = Path.GetDirectoryName(file);
                                 string file_name = Path.GetFileNameWithoutExtension(file);
                                 file_name = file_name.Replace("_NA_", "|||||");
-                                if (file_name.IndexOf('_') > -1)
+                                if (file_name.IndexOf(da_string) > -1)
                                 {
-                                    file_name = file_name.Replace("_", " ");
+                                    file_name = file_name.Replace(da_string, rep_string);
+
                                     file_name = file_name.Replace("|||||", "_NA_");
                                     string ext_name = Path.GetExtension(file);
 
@@ -2420,7 +2393,7 @@ namespace ConsoleApplication1
 
                             rla_files.RemoveAt(0);
                         }
-                        Console.WriteLine("Underscore has been replaced. Press and key to continue...");
+                        Console.WriteLine(da_string + " has been replaced with " + rep_string + ". Press and key to continue...");
 
                         Console.ReadKey();
                         break;
